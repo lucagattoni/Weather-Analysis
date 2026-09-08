@@ -1,6 +1,10 @@
 # Weather viewer POC — plan
 
-Status: **v3, all decisions taken, ready to implement on the go-ahead** · written 20260908 20:31 UTC · updated 20260908 21:08 UTC · branch `20260908_2031-poc-plan`
+Status: **v3, implemented 20260908** · written 20260908 20:31 UTC · updated 20260908 21:08 UTC · branch `20260908_2031-poc-plan`
+
+> Sections 1 to 9 are the plan as approved and are left unedited. Seven things
+> changed while building it, including the preprocessing language and the y-axis
+> range rule: **read section 10 before following any command in this document.**
 
 Decisions taken on 20260908 are recorded in section 9. The alternatives stay in the tables so the choice remains visible. Section 4 ends with the language boundary (TypeScript only for now).
 
@@ -237,3 +241,35 @@ Overlaying two years or two variables, zoom and pan, day/month ranges, daily or 
 Nothing is open. Implementation starts on the explicit go-ahead, on a fresh branch from `main` once this plan is merged.
 
 Defaults I will apply unless you object: UTC on the axis; gaps for missing values; full Jan–Dec axis for a partial year; automatic global min/max scale rounded outward; npm as package manager.
+
+## 10. Amendments during implementation (20260908)
+
+The plan above is left as written. What follows is what changed while building it,
+and why. Branch `20260908_2121-poc-implementation`.
+
+| # | What the plan said | What was built | Why |
+|---|---|---|---|
+| A1 | Decision 4: preprocessing in TypeScript run by Node 26 (`scripts/split-years.ts`) | Python with pandas, run by `uv` (`scripts/split_years.py`), dependencies pinned in `split_years.py.lock` | User instruction, 20260908: "use uv and python … with pandas and other data analysis libraries … just for creating the chunks". This applies the section 4 language boundary rather than breaking it: build-time work may use pandas-class tooling, the runtime stays TypeScript only. The recommendation at the time was to stay with TypeScript, since the task is a line-oriented stream with no join, resample or statistics; the user's instruction stands. |
+| A2 | §2: missing values are "empty cells" | Missing values are a **single space** | Measured on all 706,369 rows. `Number(" ")` is `0` in JavaScript, so a parser testing for an empty string would have silently recorded 255 missing visibility readings as 0 m. All 306 missing cells now become JSON `null`. |
+| A3 | §4: y-range is the global min/max from `meta.json`, and separately sentinels become gaps | The global range in `meta.json` **excludes sentinels** | The two rules contradicted each other. `clht` 999 is 26.5% of all rows and the real ceiling never exceeds 440, so the axis would have run 0..1000 over data that stops at 440, with a quarter of every year as holes. Now 0..450, 98% of the axis used. `clamt` 9 ("sky obscured", one row in the series) is the same case: 0..8, not 0..9. Sentinels stay verbatim in the chunks. |
+| A4 | §2 table lists `clamt` as "0 .. 8, 9 = sky obscured" | `clamt` 9 declared as a sentinel in `meta.json` | Measured: exactly one row in 706,369 uses it. |
+| A5 | §4: "a manual range override per variable is possible in the registry" | One override exists: `wddir` → 0..360 | Rounding outward gives 0..375 for a compass, which is meaningless. This is the first real use of the override mechanism the plan reserved. |
+| A6 | §5: tree-shaken ECharts bundle "not measured" | **554 kB, 187 kB gzipped** | Measured at scaffold time, half the full package's 1.11 MB / 368 kB. |
+| A7 | §3: chunks estimated at ~600 KB each, ~50 MB total | ~455 KB median, 37.5 MB total across 81 files | Measured after generation. |
+
+Decisions 1, 2, 3, 5, 6 and the section 8 roadmap are unchanged. The alternatives
+tabled in sections 3, 5 and 9 stay on record.
+
+### Verified at implementation time
+
+- Source invariants re-checked on every run of the chunking script: 706,369 rows,
+  exactly one per hour, no gaps, no duplicates, strictly chronological.
+- The script is deterministic: two consecutive runs produced byte-identical output.
+- Hour 0 of 1946 in the chunk is identical to the first data row of the source CSV.
+- Axis rounding reproduces both worked examples in section 4: temp → -15..30,
+  msl → 940..1050.
+- Manual check in Chrome (section 6, step 4): 1946, 1990, 2025 and the partial
+  2026 all render; all 13 variables cycle without error; temperature uses the same
+  axis on 1946 and 2025; visibility shows 23 gaps in 1946 and cloud ceiling 2,621
+  in 2025; the partial year shows an empty remainder; an unknown year is refused
+  with a message; the console is clean.

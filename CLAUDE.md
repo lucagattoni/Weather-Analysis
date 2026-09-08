@@ -7,7 +7,7 @@ Browser app in TypeScript that visualises the Met Éireann Dublin Airport hourly
 - Minimal POC, no over-engineering: build only what the approved plan says. The structure is prepared for the roadmap (plan §8); a roadmap feature is not built until asked.
 - Do not assume: when a choice is the user's, present the options with honest pros and cons and a marked recommendation, then wait. The user has the last word.
 - Every change happens on a branch named `YYYYMMDD_HHMM-<name>` (UTC) in a git worktree, never in the primary checkout. Commit and push after each step that works, not at the end.
-- In-progress status and the exact next step live in `RESUME.md` at the repo root; read it first, keep it current, remove it when the POC lands.
+- Multi-step work in progress keeps a `RESUME.md` at the repo root (state, exact next command); read it first if it exists, keep it current, delete it when the work lands.
 - A plan is written, reviewed and approved before implementation. Plans live in `plans/` as `YYYYMMDD_HHMM-<name>.md` (UTC). When a decision lands in a plan, keep the original alternatives on record. Before calling a plan ready, state what is still missing.
 
 ## Architecture (plan §4)
@@ -17,12 +17,13 @@ Browser app in TypeScript that visualises the Met Éireann Dublin Airport hourly
 - App state is plural (`years[]`, `variables[]`) even while the UI allows one of each.
 - Variables are data (`public/data/meta.json` plus a small registry), not code. Sentinels and missing values become gaps in the model, never in the chunks or the adapter.
 - Contracts are enforced, not promised: `tsc --noEmit` runs in `npm run build`.
-- The y-scale of a variable is fixed across years (global range from `meta.json`, rounded outward) so years are comparable; changing the variable changes the scale.
+- The y-scale of a variable is fixed across years (global range from `meta.json`, rounded outward) so years are comparable; changing the variable changes the scale. A sentinel is excluded from that range: it is a real observation but not a measurement on the scale (`clht` 999 = no ceiling), so including it would leave the axis mostly empty.
 
 ## Languages
 
-- TypeScript only for now, at runtime and in build-time scripts (`scripts/*.ts`, run directly by Node 26: erasable syntax only, explicit `.ts` import extensions). One language in the browser, always.
-- Language boundary (plan §4): build-time code does whole-series, run-once work and emits facts as static files under `public/data/`; runtime code does interaction-dependent work on the slice in memory and decides presentation. Python enters only for build-time work that needs pandas-class tooling, never at runtime.
+- TypeScript in the browser, always: everything under `src/` (erasable syntax only, explicit `.ts` import extensions).
+- Python for build-time preprocessing only (`scripts/*.py`, pandas run by `uv run`, dependencies pinned in the sibling `.lock`). Decided 20260908; supersedes plan decision 4.
+- Language boundary (plan §4): build-time code does whole-series, run-once work and emits facts as static files under `public/data/`; runtime code does interaction-dependent work on the slice in memory and decides presentation. Python never runs at runtime.
 
 ## Runtime and hosting
 
@@ -32,4 +33,4 @@ Browser app in TypeScript that visualises the Met Éireann Dublin Airport hourly
 
 - Source: Met Éireann, Dublin Airport hourly observations, licence CC BY 4.0. Credit it in the app footer and in the README.
 - Lazy-load one year at a time from `public/data/years/<year>.json`; never load the whole series. Chunks and `meta.json` are committed; their schema (plan §3) is the contract between the chunking script and the app.
-- `data/*.csv.gz` and the info file are committed; the uncompressed CSV is git-ignored. Regenerate with `node scripts/split-years.ts --csv data/<file>.csv.gz --out public/data`; output must be deterministic so a re-run does not churn git.
+- `data/*.csv.gz` and the info file are committed; the uncompressed CSV is git-ignored. Regenerate with `uv run scripts/split_years.py --csv data/<file>.csv.gz --out public/data`; output must be deterministic so a re-run does not churn git.
