@@ -6,6 +6,8 @@ Browser app in TypeScript that visualises the Met Éireann Dublin Airport hourly
 
 - Minimal POC, no over-engineering: build only what the approved plan says. The structure is prepared for the roadmap (plan §8); a roadmap feature is not built until asked.
 - Do not assume: when a choice is the user's, present the options with honest pros and cons and a marked recommendation, then wait. The user has the last word.
+- Every change happens on a branch named `YYYYMMDD_HHMM-<name>` (UTC) in a git worktree, never in the primary checkout. Commit and push after each step that works, not at the end.
+- In-progress status and the exact next step live in `RESUME.md` at the repo root; read it first, keep it current, remove it when the POC lands.
 - A plan is written, reviewed and approved before implementation. Plans live in `plans/` as `YYYYMMDD_HHMM-<name>.md` (UTC). When a decision lands in a plan, keep the original alternatives on record. Before calling a plan ready, state what is still missing.
 
 ## Architecture (plan §4)
