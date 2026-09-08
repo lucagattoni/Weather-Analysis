@@ -13,7 +13,16 @@ export interface VariableMeta {
   decimals: number;
   /** A real observation that is not a measurement on this scale (clht 999). */
   sentinel?: number;
+  /** How a run of hours combines when the app resamples to a coarser step. */
+  aggregate: Aggregate;
 }
+
+/**
+ * A plain mean is wrong for three of the thirteen variables.
+ * `sum` for amounts per hour (rain, sunshine): a day is their total, not their
+ * average. `circular` for wind direction: a mean of degrees is not a direction.
+ */
+export type Aggregate = 'mean' | 'sum' | 'circular';
 
 export interface YearMeta {
   year: number;

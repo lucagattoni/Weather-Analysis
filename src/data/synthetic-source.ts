@@ -19,7 +19,15 @@ export class SyntheticSource implements DataSource {
         hours: year % 4 === 0 ? 8784 : 8760,
       })),
       variables: [
-        { key: 'temp', label: 'Air temperature', unit: '°C', min: -11.5, max: 29.1, decimals: 1 },
+        {
+          key: 'temp',
+          label: 'Air temperature',
+          unit: '°C',
+          min: -11.5,
+          max: 29.1,
+          decimals: 1,
+          aggregate: 'mean',
+        },
       ],
     };
   }

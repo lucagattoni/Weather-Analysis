@@ -270,7 +270,7 @@ export class EChartsAdapter implements ChartAdapter {
           showSymbol: false,
           connectNulls: false,
           sampling: 'lttb' as const,
-          lineStyle: { width: 1 },
+          lineStyle: { width: 1, opacity: view.lineOpacity ?? 1 },
         })),
       },
       // Replace rather than merge, so dropping a series actually drops it.

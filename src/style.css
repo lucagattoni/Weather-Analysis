@@ -32,6 +32,8 @@ h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 1rem; }
   border: 1px solid var(--line);
   border-radius: 4px;
 }
+#controls input[type='range'] { width: 96px; accent-color: var(--fg); vertical-align: middle; }
+#controls output { font-size: 0.8rem; color: var(--muted); min-width: 7.5em; }
 #controls button { cursor: pointer; margin-left: auto; }
 #controls button:hover { border-color: var(--fg); }
 

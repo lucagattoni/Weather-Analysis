@@ -29,6 +29,8 @@ export interface ChartView {
   xWindow?: [number, number];
   yAxes: Axis[];
   series: Series[];
+  /** 0..1. Below 1, overlapping lines show through each other. */
+  lineOpacity?: number;
 }
 
 export interface ChartAdapter {

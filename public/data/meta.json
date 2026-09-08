@@ -425,7 +425,8 @@
       "unit": "mm",
       "min": 0.0,
       "max": 26.5,
-      "decimals": 1
+      "decimals": 1,
+      "aggregate": "sum"
     },
     {
       "key": "temp",
@@ -433,7 +434,8 @@
       "unit": "°C",
       "min": -11.5,
       "max": 29.1,
-      "decimals": 1
+      "decimals": 1,
+      "aggregate": "mean"
     },
     {
       "key": "wetb",
@@ -441,7 +443,8 @@
       "unit": "°C",
       "min": -11.5,
       "max": 22.6,
-      "decimals": 1
+      "decimals": 1,
+      "aggregate": "mean"
     },
     {
       "key": "dewpt",
@@ -449,7 +452,8 @@
       "unit": "°C",
       "min": -17.7,
       "max": 20.5,
-      "decimals": 1
+      "decimals": 1,
+      "aggregate": "mean"
     },
     {
       "key": "vappr",
@@ -457,7 +461,8 @@
       "unit": "hPa",
       "min": 2.2,
       "max": 24.2,
-      "decimals": 1
+      "decimals": 1,
+      "aggregate": "mean"
     },
     {
       "key": "rhum",
@@ -465,7 +470,8 @@
       "unit": "%",
       "min": 19,
       "max": 100,
-      "decimals": 0
+      "decimals": 0,
+      "aggregate": "mean"
     },
     {
       "key": "msl",
@@ -473,7 +479,8 @@
       "unit": "hPa",
       "min": 944.1,
       "max": 1048.7,
-      "decimals": 1
+      "decimals": 1,
+      "aggregate": "mean"
     },
     {
       "key": "wdsp",
@@ -481,15 +488,18 @@
       "unit": "knot",
       "min": 0,
       "max": 46,
-      "decimals": 0
+      "decimals": 0,
+      "aggregate": "mean"
     },
     {
       "key": "wddir",
       "label": "Predominant wind direction",
       "unit": "°",
-      "min": 0,
+      "min": 10,
       "max": 360,
-      "decimals": 0
+      "decimals": 0,
+      "aggregate": "circular",
+      "sentinel": 0
     },
     {
       "key": "sun",
@@ -497,7 +507,8 @@
       "unit": "h",
       "min": 0.0,
       "max": 1.0,
-      "decimals": 1
+      "decimals": 1,
+      "aggregate": "sum"
     },
     {
       "key": "vis",
@@ -505,7 +516,8 @@
       "unit": "m",
       "min": 5,
       "max": 75000,
-      "decimals": 0
+      "decimals": 0,
+      "aggregate": "mean"
     },
     {
       "key": "clht",
@@ -514,6 +526,7 @@
       "min": 0,
       "max": 440,
       "decimals": 0,
+      "aggregate": "mean",
       "sentinel": 999
     },
     {
@@ -523,6 +536,7 @@
       "min": 0,
       "max": 8,
       "decimals": 0,
+      "aggregate": "mean",
       "sentinel": 9
     }
   ]

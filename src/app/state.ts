@@ -10,6 +10,10 @@ export interface AppState {
   variables: VarKey[];
   /** Reserved for the zoom/range roadmap item; unused by the POC. */
   xRange?: [number, number];
+  /** Hours per plotted point. Never changes on its own; only the slider moves it. */
+  stepHours: number;
+  /** 0..1, line alpha, so overlapping lines stay visible. */
+  lineOpacity: number;
 }
 
 type Listener = (state: AppState) => void;

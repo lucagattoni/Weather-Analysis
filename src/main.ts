@@ -10,6 +10,7 @@ import type { DataSource } from './data/source.ts';
 import type { Meta, VariableMeta, YearData } from './data/types.ts';
 import { buildSeries, yearRange } from './model/series.ts';
 import { axesFor } from './model/scales.ts';
+import { samplesPerDay } from './model/resample.ts';
 
 // Swap this for SyntheticSource to run with no chunks on disk.
 const source: DataSource = new JsonYearSource();
@@ -30,7 +31,7 @@ let latestRequest = 0;
 
 async function draw(meta: Meta, state: Readonly<AppState>): Promise<void> {
   const request = (latestRequest += 1);
-  const { years, variables: variableKeys, xRange } = state;
+  const { years, variables: variableKeys, xRange, stepHours, lineOpacity } = state;
 
   if (years.length === 0) {
     say('That year is not in the data. Pick one between '
@@ -59,22 +60,26 @@ async function draw(meta: Meta, state: Readonly<AppState>): Promise<void> {
     return;
   }
 
-  const series = buildSeries(loaded, years, variables);
+  const series = buildSeries(loaded, years, variables, stepHours);
   adapter.render({
     xKind: 'time',
     xRange: yearRange(years),
     xWindow: xRange,
     yAxes: axesFor(variables),
     series,
+    lineOpacity,
   });
 
   const gaps = series.reduce(
     (total, s) => total + s.y.reduce((n, v) => (Number.isNaN(v) ? n + 1 : n), 0),
     0,
   );
-  const hours = series.reduce((total, s) => total + s.y.length, 0);
+  const points = series.reduce((total, s) => total + s.y.length, 0);
+  const detail = stepHours === 1
+    ? 'hourly'
+    : `${stepHours} h means, ${samplesPerDay(stepHours)}/day`;
   say(
-    `${years.join(', ')}: ${hours.toLocaleString('en-GB')} hourly readings`
+    `${years.join(', ')}: ${points.toLocaleString('en-GB')} points, ${detail}`
     + (gaps ? `, ${gaps.toLocaleString('en-GB')} shown as gaps` : '')
     + '. Scroll to zoom, drag to pan.',
   );
@@ -91,13 +96,21 @@ async function start(): Promise<void> {
     ? 'temp'
     : meta.variables[0].key;
 
-  const store = new Store({ years: [defaultYear], variables: [defaultVariable] });
+  // Hourly and fully opaque, and nothing moves either on its own: the sliders
+  // are the only thing that changes detail or alpha.
+  const store = new Store({
+    years: [defaultYear],
+    variables: [defaultVariable],
+    stepHours: 1,
+    lineOpacity: 1,
+  });
   mountControls(meta, store);
 
   // A zoom reported by the chart is recorded but must not trigger a re-render,
   // or applying it would report it again and loop. So the chart is redrawn only
   // when the selection changes, or when a zoom window is cleared.
-  const keyOf = (s: Readonly<AppState>) => `${s.years.join()}|${s.variables.join()}`;
+  const keyOf = (s: Readonly<AppState>) =>
+    `${s.years.join()}|${s.variables.join()}|${s.stepHours}|${s.lineOpacity}`;
   let lastKey = keyOf(store.state);
   let lastXRange = store.state.xRange;
 

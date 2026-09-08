@@ -30,22 +30,33 @@ import pandas as pd
 # variable's scale: it is excluded from the global min/max (so the y-axis fits
 # the actual data) and the app's model layer turns it into a gap in the line.
 # The source's five duplicate `ind` columns and the SYNOP codes ww/w are dropped.
+# `aggregate` says how a run of hours combines when the app resamples to a coarser
+# step. A plain mean is wrong for three of the thirteen:
+#   sum      - rain and sunshine are amounts per hour, so a day is their total,
+#              not their average. A mean reads 0.09 mm/h instead of 2.21 mm/day.
+#   circular - a mean of degrees is not a direction. Hours reading 340, 330, 300,
+#              290, 280, 270 average naively to 175 (due south) against a circular
+#              mean of 355 (due north); the two disagree by over 30 degrees on 50
+#              days of 2025 alone.
 VARIABLES: list[dict] = [
-    {"key": "rain",  "label": "Precipitation amount",      "unit": "mm",          "sentinel": None},
-    {"key": "temp",  "label": "Air temperature",           "unit": "°C",     "sentinel": None},
-    {"key": "wetb",  "label": "Wet bulb temperature",      "unit": "°C",     "sentinel": None},
-    {"key": "dewpt", "label": "Dew point temperature",     "unit": "°C",     "sentinel": None},
-    {"key": "vappr", "label": "Vapour pressure",           "unit": "hPa",         "sentinel": None},
-    {"key": "rhum",  "label": "Relative humidity",         "unit": "%",           "sentinel": None},
-    {"key": "msl",   "label": "Mean sea level pressure",   "unit": "hPa",         "sentinel": None},
-    {"key": "wdsp",  "label": "Mean wind speed",           "unit": "knot",        "sentinel": None},
-    {"key": "wddir", "label": "Predominant wind direction","unit": "°",      "sentinel": None},
-    {"key": "sun",   "label": "Sunshine duration",         "unit": "h",           "sentinel": None},
-    {"key": "vis",   "label": "Visibility",                "unit": "m",           "sentinel": None},
+    {"key": "rain",  "label": "Precipitation amount",      "unit": "mm",          "sentinel": None, "aggregate": "sum"},
+    {"key": "temp",  "label": "Air temperature",           "unit": "°C",     "sentinel": None, "aggregate": "mean"},
+    {"key": "wetb",  "label": "Wet bulb temperature",      "unit": "°C",     "sentinel": None, "aggregate": "mean"},
+    {"key": "dewpt", "label": "Dew point temperature",     "unit": "°C",     "sentinel": None, "aggregate": "mean"},
+    {"key": "vappr", "label": "Vapour pressure",           "unit": "hPa",         "sentinel": None, "aggregate": "mean"},
+    {"key": "rhum",  "label": "Relative humidity",         "unit": "%",           "sentinel": None, "aggregate": "mean"},
+    {"key": "msl",   "label": "Mean sea level pressure",   "unit": "hPa",         "sentinel": None, "aggregate": "mean"},
+    {"key": "wdsp",  "label": "Mean wind speed",           "unit": "knot",        "sentinel": None, "aggregate": "mean"},
+    # 0 = calm, which is not a direction and is not north (360 is north). 1.77% of
+    # readings. Left in the chunk, excluded from the range and from the circular
+    # mean, so 12,472 calm hours are not reported as due north.
+    {"key": "wddir", "label": "Predominant wind direction","unit": "°",      "sentinel": 0,    "aggregate": "circular"},
+    {"key": "sun",   "label": "Sunshine duration",         "unit": "h",           "sentinel": None, "aggregate": "sum"},
+    {"key": "vis",   "label": "Visibility",                "unit": "m",           "sentinel": None, "aggregate": "mean"},
     # 999 = no cloud ceiling. 26.5% of rows; the real ceiling never exceeds 440.
-    {"key": "clht",  "label": "Cloud ceiling height",      "unit": "100s of ft",  "sentinel": 999},
+    {"key": "clht",  "label": "Cloud ceiling height",      "unit": "100s of ft",  "sentinel": 999,  "aggregate": "mean"},
     # 9 = sky obscured. One row in the whole series; the okta scale is 0..8.
-    {"key": "clamt", "label": "Cloud amount",              "unit": "okta",        "sentinel": 9},
+    {"key": "clamt", "label": "Cloud amount",              "unit": "okta",        "sentinel": 9,    "aggregate": "mean"},
 ]
 KEYS = [v["key"] for v in VARIABLES]
 
@@ -172,6 +183,7 @@ def main() -> None:
             "min": round(float(finite.min()), dec) if dec else int(finite.min()),
             "max": round(float(finite.max()), dec) if dec else int(finite.max()),
             "decimals": dec,
+            "aggregate": spec["aggregate"],
         }
         if sentinel is not None:
             entry["sentinel"] = sentinel
