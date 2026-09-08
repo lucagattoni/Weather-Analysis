@@ -21,8 +21,14 @@ can be read against a single fixed y-scale.
 | 2 | X axis | One shared Jan–Dec axis (`xKind: 'dayOfYear'`, the field already present and unused in `ChartAdapter`). |
 | 3 | Day window | The existing day-range slider stays and applies to all overlaid years at once. Zooming to June–August shows that window for every selected year. |
 | 4 | Colour | Hue from the decade; shade from the year's position in the decade divided by three; dash from that position modulo three. |
-| 5 | Detail level | Rises with the year count: hourly to 3 years, daily mean to 12, monthly mean beyond, with a dropdown to override. |
+| 5 | Detail level | **No automatic detail.** Hourly stays the default at any year count. A manual slider resamples from 1 h to 6 h. Revised by the user 20260908 after the first draft; the automatic ladder is rejected and kept on record below. |
 | 6 | Legend | Always present for two or more series, showing the real line style. |
+
+Rejected and kept on record — **the automatic detail ladder** (hourly to 3 years,
+daily to 12, monthly beyond). The user's reasoning: the chart should not silently
+change what it is showing, and hourly detail stays wanted even at 20 years. Monthly
+means also discard the daily texture that makes an hourly weather series worth
+plotting. Section 3 records what the manual range does and does not achieve.
 
 Alternatives considered and rejected, kept on record: a token input with autocomplete
 (Tom Select or Choices.js, ~16 kB gzipped) — rejected because the domain is 81 fixed
@@ -54,8 +60,29 @@ At two years the between-year gap (2.6 °C) is *smaller* than one year's daily s
 points per pixel at full width, so the line is a band before a second year is added.
 Aggregation is what creates separation; colour only says which line you are pointing at.
 
+**What the 1 h to 6 h slider buys**, measured on 2006–2025:
+
+| Step | Samples/day | Points per year | Points per pixel, per series | Within-day swing | 20-year gap |
+|---|---|---|---|---|---|
+| 1 h | 24 | 8,760 | 6.90 | 6.4 °C | 10.7 °C |
+| 2 h | 12 | 4,380 | 3.45 | 5.8 °C | 10.6 °C |
+| 3 h | 8 | 2,920 | 2.30 | 5.4 °C | 10.5 °C |
+| 4 h | 6 | 2,190 | 1.72 | 4.9 °C | 10.4 °C |
+| 6 h | 4 | 1,460 | 1.15 | 4.2 °C | 10.2 °C |
+
+Two conclusions. **6 h is where dash patterns become legible**: a dash cycle needs
+roughly 1.5 points per pixel or fewer, and 6 h lands at 1.15 where 1 h is 6.90. It also
+takes 20 years from 175,200 points to 29,200. **Resampling does not separate the
+years**: the 20-year gap moves only from 10.7 °C to 10.2 °C. It smooths each line, it
+does not move the lines apart. At 20 years the chart shows the shape of the cloud and
+the trend, not individual followable years. That is intended, not a defect.
+
+Only 1, 2, 3, 4 and 6 divide 24 evenly, so the slider snaps to those five positions; a
+5 h bucket would straddle midnight and drift through the day.
+
 **Loading cost**, uncompressed: 2 years 0.7 MB, 5 years 2.1 MB, 10 years 4.4 MB,
-20 years 9.1 MB. A further reason to aggregate rather than ship every hour.
+20 years 9.1 MB. Resampling happens in the browser after the chunk is loaded, so it
+reduces points drawn, not bytes fetched.
 
 ## 4. Colour, shade and dash
 
@@ -119,8 +146,8 @@ One control row, as today, plus the year selection beneath it.
   it, a chip list of years outside the range, each chip removable, and a control to add
   one. Selecting a single year collapses to today's behaviour.
 - **Variable**: unchanged.
-- **Detail**: a new dropdown, Auto / Hourly / Daily mean / Monthly mean. Auto is the
-  default and follows §2 decision 5. The resolved level is always visible.
+- **Detail**: a slider with five positions, 1 h / 2 h / 3 h / 4 h / 6 h, labelled with
+  both the step and the samples per day. Default 1 h, and it never moves on its own.
 - **Legend**: always present for two or more series, rendering the real hue, shade and
   dash so identity is never colour-alone. Clicking an entry hides that year temporarily
   without deselecting it, which ECharts provides. With four or fewer series the lines
@@ -134,12 +161,12 @@ Dependencies still point one way. The chart library stays inside `src/chart/`.
 
 | File | Change |
 |---|---|
-| `src/model/series.ts` | `xKind: 'dayOfYear'`: map each year's hours onto a canonical year. New pure aggregation functions (mean, sum, circular mean) selected per variable. |
+| `src/model/series.ts` | `xKind: 'dayOfYear'`: map each year's hours onto a canonical year. A pure `resample(step)` using the per-variable aggregate from §5 (mean, sum, circular mean). |
 | `src/model/scales.ts` | Unchanged. The y-range stays the variable's global range. |
 | `src/model/style.ts` (new) | The year-to-hue/shade/dash function and the validated ramps. Pure, no DOM, no library. |
 | `src/chart/adapter.ts` | `Series` gains `dash` and `color`. `ChartView` gains the legend flag. |
 | `src/chart/echarts.ts` | Applies dash and colour, renders the legend, direct labels at four or fewer series. |
-| `src/app/state.ts` | Unchanged shape; `years[]` is already plural. Gains `detail`. |
+| `src/app/state.ts` | Unchanged shape; `years[]` is already plural. Gains `stepHours`. |
 | `src/app/controls.ts` | The year slider, the chip list and the detail dropdown. |
 | `src/data/*` | **Unchanged.** |
 | `scripts/split_years.py` | Emits `aggregate` per variable in `meta.json`. |
@@ -154,6 +181,7 @@ Dependencies still point one way. The chart library stays inside `src/chart/`.
 
 ## 9. Steps
 
+0. **Ships first, on its own, against today's single-year app**: the per-variable `aggregate` in `meta.json`, the pure `resample` function, and the 1 h–6 h slider. It is useful and testable without any of the multi-year work below.
 1. `scripts/split_years.py`: add `aggregate` per variable, regenerate `meta.json`, confirm the chunks are byte-identical apart from that field.
 2. `src/model/style.ts` and the aggregation functions, with the ramps for all eight hues generated and each run through the validator in both modes.
 3. `xKind: 'dayOfYear'` in the model; adapter carries dash, colour and the legend.
@@ -171,6 +199,6 @@ Section 8 of the POC plan still maps each of these to one module.
 - The eight hues' ramps are only worked out for blue. The other seven need generating
   from the same reference ramps and validating in both modes, which is step 2 above.
 - The three decisions in section 8 are unanswered.
-- No estimate yet of whether monthly aggregation should be precomputed at build time
-  rather than in the browser. At 81 years x 13 variables it is small, but it has not
-  been measured, and the language boundary would put it at build time if it is slow.
+- Whether the slider should later extend past 6 h. Nothing in the design prevents it;
+  12 h and 24 h are measured in section 3 and are a one-line change to the step list.
+  Left at 6 h because that is what was asked for.
