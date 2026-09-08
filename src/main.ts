@@ -3,6 +3,7 @@ import './style.css';
 
 import { mountControls } from './app/controls.ts';
 import { Store } from './app/state.ts';
+import type { AppState } from './app/state.ts';
 import { EChartsAdapter } from './chart/echarts.ts';
 import { JsonYearSource } from './data/json-year-source.ts';
 import type { DataSource } from './data/source.ts';
@@ -27,8 +28,9 @@ const loaded = new Map<number, YearData>();
 /** Guards against a slow fetch landing after a newer selection. */
 let latestRequest = 0;
 
-async function draw(meta: Meta, years: number[], variableKeys: string[]): Promise<void> {
+async function draw(meta: Meta, state: Readonly<AppState>): Promise<void> {
   const request = (latestRequest += 1);
+  const { years, variables: variableKeys, xRange } = state;
 
   if (years.length === 0) {
     say('That year is not in the data. Pick one between '
@@ -61,6 +63,7 @@ async function draw(meta: Meta, years: number[], variableKeys: string[]): Promis
   adapter.render({
     xKind: 'time',
     xRange: yearRange(years),
+    xWindow: xRange,
     yAxes: axesFor(variables),
     series,
   });
@@ -72,7 +75,8 @@ async function draw(meta: Meta, years: number[], variableKeys: string[]): Promis
   const hours = series.reduce((total, s) => total + s.y.length, 0);
   say(
     `${years.join(', ')}: ${hours.toLocaleString('en-GB')} hourly readings`
-    + (gaps ? `, ${gaps.toLocaleString('en-GB')} shown as gaps` : ''),
+    + (gaps ? `, ${gaps.toLocaleString('en-GB')} shown as gaps` : '')
+    + '. Scroll to zoom, drag to pan.',
   );
 }
 
@@ -89,10 +93,34 @@ async function start(): Promise<void> {
 
   const store = new Store({ years: [defaultYear], variables: [defaultVariable] });
   mountControls(meta, store);
-  store.subscribe((state) => {
-    void draw(meta, state.years, state.variables);
+
+  // A zoom reported by the chart is recorded but must not trigger a re-render,
+  // or applying it would report it again and loop. So the chart is redrawn only
+  // when the selection changes, or when a zoom window is cleared.
+  const keyOf = (s: Readonly<AppState>) => `${s.years.join()}|${s.variables.join()}`;
+  let lastKey = keyOf(store.state);
+  let lastXRange = store.state.xRange;
+
+  adapter.onXRangeChange((range) => {
+    // Zooming back out to the whole year is not a window: dropping it here is
+    // what makes the reset control disappear once there is nothing to reset.
+    const state = store.state;
+    if (state.years.length === 0) return;
+    const [lo, hi] = yearRange(state.years);
+    const wholeYear = range[0] <= lo && range[1] >= hi;
+    store.update({ xRange: wholeYear ? undefined : range });
   });
-  await draw(meta, store.state.years, store.state.variables);
+
+  store.subscribe((state) => {
+    const key = keyOf(state);
+    const zoomCleared = state.xRange === undefined && lastXRange !== undefined;
+    lastXRange = state.xRange;
+    if (key === lastKey && !zoomCleared) return;
+    lastKey = key;
+    void draw(meta, state);
+  });
+
+  await draw(meta, store.state);
 }
 
 start().catch((error: unknown) => {

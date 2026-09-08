@@ -7,47 +7,49 @@ import type { Store } from './state.ts';
  * file alone.
  */
 export function mountControls(meta: Meta, store: Store): void {
-  const yearInput = document.querySelector<HTMLInputElement>('#year');
-  const yearList = document.querySelector<HTMLDataListElement>('#years');
+  const yearSelect = document.querySelector<HTMLSelectElement>('#year');
   const variableSelect = document.querySelector<HTMLSelectElement>('#variable');
-  if (!yearInput || !yearList || !variableSelect) {
-    throw new Error('index.html is missing #year, #years or #variable');
+  const resetZoom = document.querySelector<HTMLButtonElement>('#reset-zoom');
+  if (!yearSelect || !variableSelect || !resetZoom) {
+    throw new Error('index.html is missing #year, #variable or #reset-zoom');
   }
 
-  const known = new Set(meta.years.map((y) => y.year));
+  const option = (value: string, text: string): HTMLOptionElement => {
+    const el = document.createElement('option');
+    el.value = value;
+    el.textContent = text;
+    return el;
+  };
 
-  yearList.replaceChildren(
-    ...meta.years.map((y) => {
-      const option = document.createElement('option');
-      option.value = String(y.year);
-      return option;
-    }),
+  // A select rather than an input with a datalist: a datalist popup cannot be
+  // opened by clicking, which left the control usable only by typing a year.
+  yearSelect.replaceChildren(
+    ...meta.years.map((y) =>
+      option(String(y.year), y.hours < 8760 ? `${y.year} (partial)` : String(y.year)),
+    ),
   );
-
   variableSelect.replaceChildren(
-    ...meta.variables.map((v) => {
-      const option = document.createElement('option');
-      option.value = v.key;
-      option.textContent = v.unit ? `${v.label} (${v.unit})` : v.label;
-      return option;
-    }),
+    ...meta.variables.map((v) => option(v.key, v.unit ? `${v.label} (${v.unit})` : v.label)),
   );
 
-  yearInput.value = String(store.state.years[0]);
+  yearSelect.value = String(store.state.years[0]);
   variableSelect.value = store.state.variables[0];
 
-  yearInput.addEventListener('change', () => {
-    const year = Number(yearInput.value.trim());
-    // An unknown year is ignored: the input keeps what was typed, the chart
-    // keeps what it has, and main.ts puts the reason in the status line.
-    if (!Number.isInteger(year) || !known.has(year)) {
-      store.update({ years: [] });
-      return;
-    }
-    store.update({ years: [year] });
+  // A different year is a different time span, so any zoom window is dropped.
+  yearSelect.addEventListener('change', () => {
+    store.update({ years: [Number(yearSelect.value)], xRange: undefined });
   });
 
+  // Changing the variable keeps the zoom: it is the same span, a different line.
   variableSelect.addEventListener('change', () => {
     store.update({ variables: [variableSelect.value] });
+  });
+
+  resetZoom.addEventListener('click', () => {
+    store.update({ xRange: undefined });
+  });
+
+  store.subscribe((state) => {
+    resetZoom.hidden = state.xRange === undefined;
   });
 }

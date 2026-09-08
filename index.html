@@ -11,11 +11,12 @@
 
       <form id="controls" autocomplete="off">
         <label for="year">Year</label>
-        <input id="year" name="year" list="years" inputmode="numeric" size="6" />
-        <datalist id="years"></datalist>
+        <select id="year" name="year"></select>
 
         <label for="variable">Variable</label>
         <select id="variable" name="variable"></select>
+
+        <button id="reset-zoom" type="button" hidden>Reset zoom</button>
       </form>
 
       <p id="status" role="status"></p>

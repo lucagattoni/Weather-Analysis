@@ -12,7 +12,7 @@
 }
 
 body { margin: 0; background: var(--bg); color: var(--fg); }
-main { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 2rem; }
+main { margin: 0; padding: 1.25rem 1.25rem 1.5rem; }
 h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 1rem; }
 
 #controls {
@@ -24,7 +24,7 @@ h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 1rem; }
   border-bottom: 1px solid var(--line);
 }
 #controls label { font-size: 0.85rem; color: var(--muted); }
-#controls input, #controls select {
+#controls select, #controls button {
   font: inherit;
   padding: 0.3rem 0.4rem;
   color: var(--fg);
@@ -32,9 +32,12 @@ h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 1rem; }
   border: 1px solid var(--line);
   border-radius: 4px;
 }
+#controls button { cursor: pointer; margin-left: auto; }
+#controls button:hover { border-color: var(--fg); }
 
 #status { min-height: 1.2em; margin: 0.6rem 0; font-size: 0.85rem; color: var(--muted); }
-#chart { width: 100%; height: 460px; }
+/* Full viewport width; the height grows with the window but stays readable. */
+#chart { width: 100%; height: clamp(360px, 62vh, 780px); }
 
 footer {
   margin-top: 1.5rem;

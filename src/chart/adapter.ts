@@ -23,12 +23,17 @@ export interface Axis {
 
 export interface ChartView {
   xKind: 'time' | 'dayOfYear';
+  /** The full extent of the x axis. */
   xRange: [number, number];
+  /** The zoomed window to restore, if any. Absent means show the full extent. */
+  xWindow?: [number, number];
   yAxes: Axis[];
   series: Series[];
 }
 
 export interface ChartAdapter {
   render(view: ChartView): void;
+  /** Reports the visible x window after the viewer zooms or pans. */
+  onXRangeChange(handler: (range: [number, number]) => void): void;
   destroy(): void;
 }

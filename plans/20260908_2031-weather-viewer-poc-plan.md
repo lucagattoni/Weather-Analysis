@@ -257,8 +257,14 @@ and why. Branch `20260908_2121-poc-implementation`.
 | A6 | §5: tree-shaken ECharts bundle "not measured" | **554 kB, 187 kB gzipped** | Measured at scaffold time, half the full package's 1.11 MB / 368 kB. |
 | A7 | §3: chunks estimated at ~600 KB each, ~50 MB total | ~455 KB median, 37.5 MB total across 81 files | Measured after generation. |
 
-Decisions 1, 2, 3, 5, 6 and the section 8 roadmap are unchanged. The alternatives
-tabled in sections 3, 5 and 9 stay on record.
+| A8 | §4: "Year control: `<input list="years">` + `<datalist>` (Chrome's native autocomplete)" | A `<select>` over the 81 years, the partial one labelled | Reported by the user, 20260908: the control could only be driven by typing. A datalist popup cannot be opened programmatically and Chrome shows no affordance for it on macOS, so clicking the field did nothing. A select is clickable, keeps keyboard type-ahead, and removes the "unknown year" case entirely rather than handling it. |
+| A9 | §4: no statement on page width | Chart spans the full viewport width, height `clamp(360px, 62vh, 780px)` | User request, 20260908. At 1100px the hourly line was too dense to read. |
+| A10 | §7: zoom and pan out of scope; §8: "enable `dataZoom`" in `chart/echarts.ts` | Zoom and pan built, but **not** by enabling ECharts' `inside` roam controller | User request, 20260908. Enabling `dataZoom` type `inside` was not sufficient: the component installs and reports `zoomOnMouseWheel: true`, and the wheel event demonstrably reaches the chart root, but ECharts does not act on it. `dispatchAction({type:'dataZoom'})` and the slider both work, so the wheel and drag handling is written explicitly against `dispatchAction`. It stays inside `chart/echarts.ts`, which is the module section 8 nominated, and it anchors the zoom on the cursor rather than the centre. |
+
+Decisions 1, 2, 3, 5, 6 are unchanged. The section 8 roadmap is unchanged except
+that pan/zoom is now built, and its prediction held: the change landed in
+`chart/echarts.ts` and `app/state.ts` and touched neither the data layer nor the
+model. The alternatives tabled in sections 3, 5 and 9 stay on record.
 
 ### Verified at implementation time
 
@@ -273,3 +279,8 @@ tabled in sections 3, 5 and 9 stay on record.
   axis on 1946 and 2025; visibility shows 23 gaps in 1946 and cloud ceiling 2,621
   in 2025; the partial year shows an empty remainder; an unknown year is refused
   with a message; the console is clean.
+- Zoom and pan (A10): wheel zooms around the cursor and drag pans, both verified
+  in Chrome; the y-axis stays fixed through a zoom; the window survives a variable
+  change and is dropped on a year change; zooming back out to the whole year
+  clears the reset control and the chart stays responsive afterwards; the window
+  cannot collapse below six hours nor extend past the calendar year.

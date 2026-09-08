@@ -14,8 +14,7 @@ import type { EChartsType } from 'echarts/core';
 import type { Axis, ChartAdapter, ChartView, Series } from './adapter.ts';
 
 // Registering only these keeps the bundle tree-shaken; see the README for the
-// measured size. dataZoom is registered but not switched on: the POC has no
-// zoom, and enabling it later is a change inside this file (plan section 8).
+// measured size.
 echarts.use([
   LineChart,
   GridComponent,
@@ -35,11 +34,18 @@ const UTC_STAMP = new Intl.DateTimeFormat('en-GB', {
   hour12: false,
 });
 
+/** Closest you may zoom in, so the window can never collapse to nothing. */
+const MIN_SPAN_MS = 6 * 3_600_000;
+/** How much one wheel notch changes the visible span. */
+const ZOOM_STEP = 1.35;
+
 interface TooltipPoint {
   seriesName?: string;
   value?: [number, number | null];
   marker?: string;
 }
+
+const clamp = (value: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, value));
 
 /** ECharts wants null, not NaN, to break a line. */
 function toPairs(series: Series): Array<[number, number | null]> {
@@ -67,15 +73,146 @@ function yAxisOption(axis: Axis) {
 
 export class EChartsAdapter implements ChartAdapter {
   readonly #chart: EChartsType;
+  readonly #container: HTMLElement;
   readonly #onResize: () => void;
+  readonly #detachRoam: () => void;
+  #onXRange: ((range: [number, number]) => void) | undefined;
+  /** Full x extent of the current view. */
+  #extent: [number, number] | undefined;
+  /** The window currently on screen. */
+  #applied: [number, number] | undefined;
 
   constructor(container: HTMLElement) {
+    this.#container = container;
     this.#chart = echarts.init(container, undefined, { renderer: 'canvas' });
     this.#onResize = () => this.#chart.resize();
     window.addEventListener('resize', this.#onResize);
+
+    // The slider moves the window without going through this class, so its
+    // changes are picked up here. A window equal to the one just applied is
+    // this adapter hearing its own render and must not be reported onwards.
+    this.#chart.on('dataZoom', () => {
+      const option = this.#chart.getOption() as {
+        dataZoom?: Array<{ startValue?: number; endValue?: number }>;
+      };
+      const zoom = option.dataZoom?.[0];
+      if (zoom?.startValue === undefined || zoom.endValue === undefined) return;
+      const range: [number, number] = [zoom.startValue, zoom.endValue];
+      if (this.#applied && range[0] === this.#applied[0] && range[1] === this.#applied[1]) return;
+      this.#applied = range;
+      this.#onXRange?.(range);
+    });
+
+    this.#detachRoam = this.#installRoam();
+  }
+
+  onXRangeChange(handler: (range: [number, number]) => void): void {
+    this.#onXRange = handler;
+  }
+
+  /** Data value under a client x coordinate, using the chart's own mapping. */
+  #valueAt(clientX: number): number | undefined {
+    const left = this.#container.getBoundingClientRect().left;
+    const value = this.#chart.convertFromPixel({ xAxisIndex: 0 }, clientX - left);
+    return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+  }
+
+  /** Milliseconds per horizontal pixel, measured off the live axis. */
+  #msPerPixel(): number | undefined {
+    const a = this.#chart.convertFromPixel({ xAxisIndex: 0 }, 100);
+    const b = this.#chart.convertFromPixel({ xAxisIndex: 0 }, 200);
+    if (typeof a !== 'number' || typeof b !== 'number') return undefined;
+    const per = (b - a) / 100;
+    return Number.isFinite(per) && per > 0 ? per : undefined;
+  }
+
+  #setWindow(lo: number, hi: number): void {
+    if (!this.#extent) return;
+    const [min, max] = this.#extent;
+    const span = clamp(hi - lo, MIN_SPAN_MS, max - min);
+    const start = clamp(lo, min, max - span);
+    this.#chart.dispatchAction({ type: 'dataZoom', startValue: start, endValue: start + span });
+    this.#applied = [start, start + span];
+    this.#onXRange?.(this.#applied);
+  }
+
+  /**
+   * Wheel to zoom, drag to pan.
+   *
+   * ECharts' own `inside` roam controller receives the wheel event here but does
+   * not act on it, so the interaction is driven explicitly through dispatchAction
+   * instead. It stays inside this file, which is where plan section 8 puts zoom
+   * and pan, and it anchors the zoom on the cursor rather than the centre.
+   */
+  #installRoam(): () => void {
+    const onWheel = (event: WheelEvent) => {
+      if (!this.#extent || !this.#applied) return;
+      event.preventDefault();
+      const [lo, hi] = this.#applied;
+      const span = hi - lo;
+      const anchor = clamp(this.#valueAt(event.clientX) ?? lo + span / 2, lo, hi);
+      const next = clamp(
+        span * (event.deltaY < 0 ? 1 / ZOOM_STEP : ZOOM_STEP),
+        MIN_SPAN_MS,
+        this.#extent[1] - this.#extent[0],
+      );
+      const share = span === 0 ? 0.5 : (anchor - lo) / span;
+      this.#setWindow(anchor - next * share, anchor - next * share + next);
+    };
+
+    let panning = false;
+    let lastX = 0;
+
+    const zoomedIn = () =>
+      this.#extent !== undefined
+      && this.#applied !== undefined
+      && this.#applied[1] - this.#applied[0] < this.#extent[1] - this.#extent[0];
+
+    const onPointerDown = (event: PointerEvent) => {
+      // Nothing to pan while the whole year is on screen.
+      if (event.button !== 0 || !zoomedIn()) return;
+      panning = true;
+      lastX = event.clientX;
+      this.#container.setPointerCapture(event.pointerId);
+      this.#container.style.cursor = 'grabbing';
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      if (!panning || !this.#applied) return;
+      const per = this.#msPerPixel();
+      if (per === undefined) return;
+      const shift = (event.clientX - lastX) * per;
+      lastX = event.clientX;
+      this.#setWindow(this.#applied[0] - shift, this.#applied[1] - shift);
+    };
+
+    const stop = (event: PointerEvent) => {
+      if (!panning) return;
+      panning = false;
+      this.#container.releasePointerCapture?.(event.pointerId);
+      this.#container.style.cursor = '';
+    };
+
+    this.#container.addEventListener('wheel', onWheel, { passive: false });
+    this.#container.addEventListener('pointerdown', onPointerDown);
+    this.#container.addEventListener('pointermove', onPointerMove);
+    this.#container.addEventListener('pointerup', stop);
+    this.#container.addEventListener('pointercancel', stop);
+
+    return () => {
+      this.#container.removeEventListener('wheel', onWheel);
+      this.#container.removeEventListener('pointerdown', onPointerDown);
+      this.#container.removeEventListener('pointermove', onPointerMove);
+      this.#container.removeEventListener('pointerup', stop);
+      this.#container.removeEventListener('pointercancel', stop);
+    };
   }
 
   render(view: ChartView): void {
+    this.#extent = [view.xRange[0], view.xRange[1]];
+    const window_ = view.xWindow ?? view.xRange;
+    this.#applied = [window_[0], window_[1]];
+
     const axisIndex = new Map(view.yAxes.map((a, i) => [a.scale, i]));
     const decimalsFor = new Map(view.yAxes.map((a) => [a.scale, a.decimals]));
     // ECharts identifies a series by name, so the tooltip looks up unit and
@@ -88,7 +225,7 @@ export class EChartsAdapter implements ChartAdapter {
       {
         useUTC: true,
         animation: false,
-        grid: { left: 76, right: 24, top: 28, bottom: 48, containLabel: false },
+        grid: { left: 76, right: 32, top: 28, bottom: 92, containLabel: false },
         legend: { show: view.series.length > 1, top: 0 },
         tooltip: {
           trigger: 'axis',
@@ -106,6 +243,18 @@ export class EChartsAdapter implements ChartAdapter {
             return `${UTC_STAMP.format(points[0].value[0])} UTC<br>${rows.join('<br>')}`;
           },
         },
+        // Zoom and pan act on time only, so the fixed y-scale that makes years
+        // comparable is never rescaled by a zoom.
+        dataZoom: [
+          {
+            type: 'slider',
+            xAxisIndex: 0,
+            height: 30,
+            bottom: 34,
+            startValue: window_[0],
+            endValue: window_[1],
+          },
+        ],
         xAxis: {
           type: 'time',
           min: view.xRange[0],
@@ -131,6 +280,7 @@ export class EChartsAdapter implements ChartAdapter {
 
   destroy(): void {
     window.removeEventListener('resize', this.#onResize);
+    this.#detachRoam();
     this.#chart.dispose();
   }
 }
