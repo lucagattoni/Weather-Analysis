@@ -1,9 +1,9 @@
 # Dublin Airport hourly weather
 
-A single-page browser app that plots one variable for one year of the Met Éireann
-Dublin Airport hourly observation series, 1946 to 2026. The y-scale is fixed per
-variable, so the same variable looks the same on every year and years can be
-compared by eye.
+A single-page browser app that plots one variable across one or many years of the
+Met Éireann Dublin Airport hourly observation series, 1946 to 2026. Selected years
+are overlaid on one shared 1 January to 31 December axis, and the y-scale is fixed
+per variable, so years are directly comparable by eye.
 
 Data: **Met Éireann**, Dublin Airport hourly observations, licensed
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
@@ -17,14 +17,24 @@ npm run build        # runs tsc, then vite build
 ```
 
 `npm run build` type-checks before it bundles, so the interfaces below are
-enforced rather than promised. Production bundle: **558 kB, 188 kB gzipped**
+enforced rather than promised. Production bundle: **562 kB, 190 kB gzipped**
 (the full ECharts package is 1.11 MB, 368 kB gzipped; only the line chart, grid,
 tooltip, legend, dataZoom and canvas renderer are registered).
 
 ## What it does
 
-- **Year** is a dropdown over the 81 years present, with the partial year
-  labelled. Typing while it has focus jumps to a year.
+- **Years** is a two-knob slider over 1946 to 2026. Beside it, a dropdown adds a
+  single year from outside the range as a removable chip, so a range and a few
+  outliers can be compared together.
+- **Overlay.** Two or more years share one Jan-to-Dec axis. Each year's colour comes
+  from its decade, its shade from its position in the decade over three, and its dash
+  from that position modulo three: 2020 to 2022 are one shade solid, dashed and
+  dotted, 2023 restarts at solid one shade darker. All three come from the year
+  number, never from where it sits in the selection, so widening the range never
+  repaints a line that was already on screen.
+- **Legend.** Always shown for two or more years, drawing each year's real line
+  style, and clicking an entry hides that year without deselecting it. Four or fewer
+  years are also labelled at the end of their line.
 - **Variable** is a dropdown over the 13 numeric variables. The two SYNOP code
   columns (`ww`, `w`) are categorical and excluded.
 - **Detail** is a slider from 1 h to 6 h. It resamples the line in the browser and
@@ -33,7 +43,8 @@ tooltip, legend, dataZoom and canvas renderer are registered).
   straddle midnight and drift through the day. A point is drawn at the mean timestamp
   of the hours it covers.
 - **Opacity** is a slider on the line alpha, so overlapping lines stay visible. Below
-  about 50% a single line gets genuinely faint against the background.
+  about 50% a single line gets genuinely faint against the background. The legend
+  ignores it and stays readable.
 - **Zoom and pan.** Scroll over the chart to zoom around the cursor, drag to pan,
   or drag the slider under the chart. Zoom acts on time only, so the fixed
   y-scale that makes years comparable is never rescaled. Reset zoom appears once
@@ -85,6 +96,8 @@ Three things about the source are easy to get wrong:
   of all rows. The real ceiling never exceeds 440, so the sentinel is excluded
   when computing the axis range and shown as a gap in the line.
 - **`clamt` 9 means "sky obscured"**, not 9 oktas. One row in the whole series.
+- **A non-leap year has no 29 February**, so on the shared axis it carries an
+  explicit one-day gap there rather than having its line drawn straight across.
 - **`wddir` 0 means calm, and 360 means north.** They are different values with
   different meanings, and 0 is 1.77% of readings. Treating calm as a direction would
   report 12,472 calm hours as due north, so 0 is a sentinel: excluded from the range,
@@ -125,6 +138,7 @@ Four layers. Dependencies point one way, and only `src/main.ts` knows all four.
 | `src/data/synthetic-source.ts` | A second `DataSource`, in memory | — |
 | `src/model/series.ts` | Chunks to drawable series; sentinels to gaps | overlays |
 | `src/model/resample.ts` | Combining a run of hours into one point, per variable | other steps or aggregates |
+| `src/model/style.ts` | A year to a colour and dash; the generated ramps | another encoding, a sequential ramp |
 | `src/model/scales.ts` | Fixed y-range per variable, rounded outward | manual ranges per variable |
 | `src/chart/adapter.ts` | `ChartAdapter` and `ChartView`, the whole contract | — |
 | `src/chart/echarts.ts` | The only file that imports a chart library, including the wheel and drag handling | any charting library |
@@ -147,10 +161,27 @@ src/                   the app, TypeScript only
 plans/                 the approved plan and its amendments
 ```
 
+### How many years is too many
+
+The picker will happily select thirty years, and the app will draw them. It is worth
+knowing what that gets you. Resampling smooths each line but does not move the lines
+apart: across twenty years the gap between the highest and lowest year is 10.7 °C at
+hourly and still 10.2 °C at six-hourly, while one year's median day already swings
+6.4 °C. So past roughly a dozen years you are reading the shape of the cloud and the
+decade colours, not following individual years. That is a legitimate view, and the
+opacity slider is the tool for it. It is not a defect.
+
+The colours are generated and validated rather than chosen. Every ramp passes the
+ordinal checks and all eight hues pass the categorical checks against each other at
+every shade level, in both light and dark. They live between OKLab lightness 0.50 and
+0.80, the only window where all eight hues hold enough chroma to still read as a
+colour. There are nine decades and eight hues, so the 1940s and the 2020s share one;
+that is only reachable by selecting across the whole 81-year span.
+
 ## Scope
 
-This is a POC. Range selection, overlaying two years or two variables,
-aggregation, tests and deployment are deliberately not built. Section 8 of the
+This is a POC. Overlaying two *variables*, aggregation beyond six hours,
+tests and deployment are deliberately not built. Section 8 of the
 plan maps each of them to the one module it would land in.
 
 One thing worth knowing about the zoom: ECharts' own `inside` roam controller

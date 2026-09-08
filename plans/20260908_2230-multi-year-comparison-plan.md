@@ -203,3 +203,36 @@ Section 8 of the POC plan still maps each of these to one module.
 - Whether the slider should later extend past 6 h. Nothing in the design prevents it;
   12 h and 24 h are measured in section 3 and are a one-line change to the step list.
   Left at 6 h because that is what was asked for.
+
+## 12. Built 20260908 — what differed
+
+Implemented on branch `20260908_2254-multi-year`. Sections 1 to 11 are left as
+approved. What changed while building:
+
+| # | Plan said | Built | Why |
+|---|---|---|---|
+| M1 | §7: `src/model/style.ts` holds "the year-to-hue/shade/dash function and the validated ramps" | Same, and the 64 colours are **generated** by a script against the validator rather than hand-picked | Only the blue ramp existed. The other seven were generated in OKLCH at fixed lightness targets and each checked programmatically. |
+| M2 | §4: shades taken from the reference blue ramp's lightness | Ramps constrained to OKLab lightness **0.50–0.80** (light mode 0.50–0.72) | Measured: outside that window at least one of the eight hues drops below the 0.10 chroma floor and reads grey, or sinks into the surface. Two dark ramps additionally needed their dark end lifted 0.005 to clear 2:1. |
+| M3 | §6: legend "always present for two or more series" | Also: legend icons are lines not blocks, and the legend ignores the opacity slider | A filled block hides the dash, and a legend that fades with the chart stops being the relief that a sub-3:1 line depends on. |
+| M4 | §6: "with four or fewer series the lines are also directly labelled" | Labels carry the series colour and collide-hide | Three labels stacked at the same y is worse than none. |
+| M5 | not specified | The tooltip switches from axis to item past six series, and drops the year on the shared axis | An axis tooltip would list all 36 years; and on the shared axis the year belongs to the series, not the x position. |
+| M6 | not specified | The x-axis labels omit the year in day-of-year mode | Otherwise the canonical year 2024 appears on the axis for every selected year, which is a lie about the data. |
+
+### Verified
+
+- The style rule reproduces the worked example exactly: 2020–2022 one shade
+  solid/dashed/dotted, 2023 a darker shade restarting at solid.
+- Decision A holds: the 1940s and 2020s collide as chosen, the other eight decades
+  are distinct.
+- Decision B holds: 2024 gives 8,784 points, 2025 gives 8,761, and the extra one is
+  a gap at 29 February. Both land inside the canonical year.
+- All 16 ramps pass the ordinal checks; all 8 hues pass the categorical checks at
+  every one of the 4 shade levels, in both modes.
+- In Chrome: a 6-year range, adding and removing 1963 as a chip, three years with
+  direct labels, zoom and pan across all selected years at once, and a 36-year
+  selection which renders in about 12 seconds. Console clean throughout.
+
+### Still not built
+
+The sequential ramp above 24 years, the historical envelope, small multiples, a
+heatmap view, overlaying two variables, and URL state. Section 10 stands.

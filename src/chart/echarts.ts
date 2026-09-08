@@ -249,9 +249,15 @@ export class EChartsAdapter implements ChartAdapter {
           show: multi,
           type: 'scroll' as const,
           top: 0,
-          icon: 'roundRect',
-          itemWidth: 22,
+          // 'line' rather than a filled block, so the legend shows each year's
+          // real dash pattern. Identity must not rest on colour alone.
+          icon: 'line',
+          itemWidth: 26,
+          itemHeight: 10,
           textStyle: { fontSize: 11 },
+          // The legend must stay readable however faint the lines are set, so it
+          // ignores the opacity slider and draws a little thicker than the data.
+          lineStyle: { width: 2, opacity: 1 },
         },
         tooltip: {
           // With many years on screen an axis tooltip would list all of them, so
@@ -289,7 +295,22 @@ export class EChartsAdapter implements ChartAdapter {
           type: 'time',
           min: view.xRange[0],
           max: view.xRange[1],
-          axisLabel: { hideOverlap: true },
+          axisLabel: {
+            hideOverlap: true,
+            // On the shared axis the year belongs to the series, so showing the
+            // canonical year on the axis would be a lie about the data.
+            ...(view.xKind === 'dayOfYear'
+              ? {
+                  formatter: {
+                    year: '{MMM}',
+                    month: '{MMM}',
+                    day: '{d} {MMM}',
+                    hour: '{HH}:{mm}',
+                    minute: '{HH}:{mm}',
+                  },
+                }
+              : {}),
+          },
         },
         yAxis: view.yAxes.map(yAxisOption),
         series: view.series.map((s) => ({
@@ -308,13 +329,17 @@ export class EChartsAdapter implements ChartAdapter {
             ...(s.color ? { color: s.color } : {}),
           },
           // Four or fewer series also get a direct label, so the eye does not
-          // have to travel to the legend and back.
+          // have to travel to the legend and back. They carry the series colour,
+          // and any that would collide are dropped rather than stacked, because
+          // three labels piled on one another are worse than none.
           endLabel: {
             show: view.series.length > 1 && view.series.length <= 4,
             formatter: s.label,
             fontSize: 11,
-            distance: 4,
+            distance: 6,
+            ...(s.color ? { color: s.color } : {}),
           },
+          labelLayout: { hideOverlap: true },
         })),
       },
       // Replace rather than merge, so dropping a series actually drops it.

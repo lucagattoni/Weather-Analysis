@@ -10,8 +10,17 @@
       <h1>Dublin Airport hourly weather</h1>
 
       <form id="controls" autocomplete="off">
-        <label for="year">Year</label>
-        <select id="year" name="year"></select>
+        <label for="year-from">Years</label>
+        <div id="year-range">
+          <span class="track"></span>
+          <span class="fill"></span>
+          <input id="year-from" name="year-from" type="range" aria-label="First year" />
+          <input id="year-to" name="year-to" type="range" aria-label="Last year" />
+        </div>
+        <output id="year-range-value" for="year-from year-to"></output>
+
+        <label for="year-add">Add</label>
+        <select id="year-add" name="year-add" aria-label="Add a year outside the range"></select>
 
         <label for="variable">Variable</label>
         <select id="variable" name="variable"></select>
@@ -26,6 +35,8 @@
 
         <button id="reset-zoom" type="button" hidden>Reset zoom</button>
       </form>
+
+      <p id="year-chips" aria-label="Years added outside the range"></p>
 
       <p id="status" role="status"></p>
 
