@@ -1,8 +1,25 @@
 import type { Series } from '../chart/adapter.ts';
+import { CANONICAL_YEAR } from '../chart/adapter.ts';
 import type { VariableMeta, YearData } from '../data/types.ts';
 import { combine } from './resample.ts';
 
 const HOUR_MS = 3_600_000;
+const isLeap = (y: number) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+
+/**
+ * Moves a timestamp onto the canonical year, keeping month, day and time.
+ * This is what puts every selected year on one shared 1 Jan – 31 Dec axis.
+ */
+function toCanonical(ms: number): number {
+  const d = new Date(ms);
+  return Date.UTC(
+    CANONICAL_YEAR,
+    d.getUTCMonth(),
+    d.getUTCDate(),
+    d.getUTCHours(),
+    d.getUTCMinutes(),
+  );
+}
 
 /**
  * Pure transforms from loaded chunks to drawable series. No I/O, no DOM.
@@ -17,7 +34,12 @@ const HOUR_MS = 3_600_000;
  * a missing reading (null), and a sentinel, which is a real observation that is
  * not a measurement on this scale (clht 999 means no cloud ceiling).
  */
-export function seriesFor(year: YearData, variable: VariableMeta, stepHours = 1): Series {
+export function seriesFor(
+  year: YearData,
+  variable: VariableMeta,
+  stepHours = 1,
+  xKind: 'time' | 'dayOfYear' = 'time',
+): Series {
   const values = year.columns[variable.key];
   if (!values) throw new Error(`${year.year}.json has no column "${variable.key}"`);
 
@@ -44,9 +66,39 @@ export function seriesFor(year: YearData, variable: VariableMeta, stepHours = 1)
     x[b] = startMs + ((from + to - 1) / 2) * HOUR_MS;
     y[b] = step === 1 ? hourly[from] : combine(hourly, from, to, variable.aggregate);
   }
+
+  if (xKind === 'dayOfYear') {
+    const canonX: number[] = [];
+    const canonY: number[] = [];
+    // The canonical year is a leap year, so a non-leap year has nothing to put in
+    // 29 February. One NaN there is what stops the line being drawn straight
+    // across the missing day (decision B: a gap, never an invented or dropped
+    // reading).
+    const gapAt = isLeap(year.year) ? null : Date.UTC(CANONICAL_YEAR, 1, 29, 12);
+    let gapDone = gapAt === null;
+    for (let i = 0; i < x.length; i += 1) {
+      const cx = toCanonical(x[i]);
+      if (!gapDone && gapAt !== null && cx > gapAt) {
+        canonX.push(gapAt);
+        canonY.push(Number.NaN);
+        gapDone = true;
+      }
+      canonX.push(cx);
+      canonY.push(y[i]);
+    }
+    return {
+      id: `${year.year}:${variable.key}`,
+      label: String(year.year),
+      unit: variable.unit,
+      scale: variable.key,
+      x: Float64Array.from(canonX),
+      y: Float64Array.from(canonY),
+    };
+  }
+
   return {
     id: `${year.year}:${variable.key}`,
-    label: `${variable.label} ${year.year}`,
+    label: String(year.year),
     unit: variable.unit,
     scale: variable.key,
     x,
@@ -59,14 +111,20 @@ export function buildSeries(
   years: readonly number[],
   variables: readonly VariableMeta[],
   stepHours = 1,
+  xKind: 'time' | 'dayOfYear' = 'time',
 ): Series[] {
   const out: Series[] = [];
   for (const year of years) {
     const data = loaded.get(year);
     if (!data) continue;
-    for (const variable of variables) out.push(seriesFor(data, variable, stepHours));
+    for (const variable of variables) out.push(seriesFor(data, variable, stepHours, xKind));
   }
   return out;
+}
+
+/** The whole canonical year, which every overlaid year shares. */
+export function canonicalRange(): [number, number] {
+  return [Date.UTC(CANONICAL_YEAR, 0, 1), Date.UTC(CANONICAL_YEAR + 1, 0, 1)];
 }
 
 /**

@@ -8,9 +8,11 @@ import { EChartsAdapter } from './chart/echarts.ts';
 import { JsonYearSource } from './data/json-year-source.ts';
 import type { DataSource } from './data/source.ts';
 import type { Meta, VariableMeta, YearData } from './data/types.ts';
-import { buildSeries, yearRange } from './model/series.ts';
+import { buildSeries, canonicalRange, yearRange } from './model/series.ts';
 import { axesFor } from './model/scales.ts';
 import { samplesPerDay } from './model/resample.ts';
+import { styleSeries } from './model/style.ts';
+import { CANONICAL_YEAR } from './chart/adapter.ts';
 
 // Swap this for SyntheticSource to run with no chunks on disk.
 const source: DataSource = new JsonYearSource();
@@ -25,6 +27,23 @@ const say = (message: string) => {
 
 const adapter = new EChartsAdapter(chartEl);
 const loaded = new Map<number, YearData>();
+
+const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+const themeMode = (): 'light' | 'dark' => (darkQuery.matches ? 'dark' : 'light');
+
+/**
+ * The zoom window is always stored in the canonical year, whatever the chart is
+ * showing. That is what lets it survive a change of year selection (decision C):
+ * a window means "10 June to 20 August", not "10 June 2025 to 20 August 2025".
+ */
+const sameDayIn = (ms: number, year: number): number => {
+  const d = new Date(ms);
+  return Date.UTC(year, d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes());
+};
+const toDisplay = (win: [number, number], year: number): [number, number] =>
+  [sameDayIn(win[0], year), sameDayIn(win[1], year)];
+const toCanonicalWindow = (win: [number, number]): [number, number] =>
+  [sameDayIn(win[0], CANONICAL_YEAR), sameDayIn(win[1], CANONICAL_YEAR)];
 
 /** Guards against a slow fetch landing after a newer selection. */
 let latestRequest = 0;
@@ -60,11 +79,17 @@ async function draw(meta: Meta, state: Readonly<AppState>): Promise<void> {
     return;
   }
 
-  const series = buildSeries(loaded, years, variables, stepHours);
+  // One year keeps its own dates; two or more share the canonical Jan-Dec axis.
+  const xKind = years.length > 1 ? 'dayOfYear' : 'time';
+  const xRangeFull = xKind === 'dayOfYear' ? canonicalRange() : yearRange(years);
+  const series = styleSeries(
+    buildSeries(loaded, years, variables, stepHours, xKind),
+    themeMode(),
+  );
   adapter.render({
-    xKind: 'time',
-    xRange: yearRange(years),
-    xWindow: xRange,
+    xKind,
+    xRange: xRangeFull,
+    xWindow: xRange && (xKind === 'dayOfYear' ? xRange : toDisplay(xRange, years[0])),
     yAxes: axesFor(variables),
     series,
     lineOpacity,
@@ -78,8 +103,11 @@ async function draw(meta: Meta, state: Readonly<AppState>): Promise<void> {
   const detail = stepHours === 1
     ? 'hourly'
     : `${stepHours} h means, ${samplesPerDay(stepHours)}/day`;
+  const which = years.length === 1
+    ? String(years[0])
+    : `${years.length} years, ${Math.min(...years)}–${Math.max(...years)}`;
   say(
-    `${years.join(', ')}: ${points.toLocaleString('en-GB')} points, ${detail}`
+    `${which}: ${points.toLocaleString('en-GB')} points, ${detail}`
     + (gaps ? `, ${gaps.toLocaleString('en-GB')} shown as gaps` : '')
     + '. Scroll to zoom, drag to pan.',
   );
@@ -119,9 +147,11 @@ async function start(): Promise<void> {
     // what makes the reset control disappear once there is nothing to reset.
     const state = store.state;
     if (state.years.length === 0) return;
-    const [lo, hi] = yearRange(state.years);
+    const [lo, hi] = state.years.length > 1 ? canonicalRange() : yearRange(state.years);
     const wholeYear = range[0] <= lo && range[1] >= hi;
-    store.update({ xRange: wholeYear ? undefined : range });
+    store.update({
+      xRange: wholeYear ? undefined : toCanonicalWindow(range),
+    });
   });
 
   store.subscribe((state) => {
@@ -131,6 +161,11 @@ async function start(): Promise<void> {
     if (key === lastKey && !zoomCleared) return;
     lastKey = key;
     void draw(meta, state);
+  });
+
+  // The ramps are chosen per theme, so a theme change is a re-render.
+  darkQuery.addEventListener('change', () => {
+    void draw(meta, store.state);
   });
 
   await draw(meta, store.state);

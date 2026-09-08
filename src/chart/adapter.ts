@@ -11,6 +11,9 @@ export interface Series {
   /** Milliseconds since the epoch, UTC. */
   x: Float64Array;
   y: Float64Array;
+  /** Set by the model. Absent means the chart picks. */
+  color?: string;
+  dash?: 'solid' | 'dashed' | 'dotted';
 }
 
 export interface Axis {
@@ -32,6 +35,9 @@ export interface ChartView {
   /** 0..1. Below 1, overlapping lines show through each other. */
   lineOpacity?: number;
 }
+
+/** A leap year, so 29 February has a slot on the shared day-of-year axis. */
+export const CANONICAL_YEAR = 2024;
 
 export interface ChartAdapter {
   render(view: ChartView): void;

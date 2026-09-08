@@ -34,6 +34,16 @@ const UTC_STAMP = new Intl.DateTimeFormat('en-GB', {
   hour12: false,
 });
 
+/** On the shared axis the year belongs to the series, not to the x position. */
+const DAY_STAMP = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'UTC',
+  day: '2-digit',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+
 /** Closest you may zoom in, so the window can never collapse to nothing. */
 const MIN_SPAN_MS = 6 * 3_600_000;
 /** How much one wheel notch changes the visible span. */
@@ -209,6 +219,7 @@ export class EChartsAdapter implements ChartAdapter {
   }
 
   render(view: ChartView): void {
+    const multi = view.series.length > 1;
     this.#extent = [view.xRange[0], view.xRange[1]];
     const window_ = view.xWindow ?? view.xRange;
     this.#applied = [window_[0], window_[1]];
@@ -225,12 +236,30 @@ export class EChartsAdapter implements ChartAdapter {
       {
         useUTC: true,
         animation: false,
-        grid: { left: 76, right: 32, top: 28, bottom: 92, containLabel: false },
-        legend: { show: view.series.length > 1, top: 0 },
+        grid: {
+          left: 76,
+          right: multi ? 64 : 32,
+          top: multi ? 46 : 28,
+          bottom: 92,
+          containLabel: false,
+        },
+        // Identity is never colour alone: the legend renders each year's real
+        // line style, and a small selection is labelled at the line's end too.
+        legend: {
+          show: multi,
+          type: 'scroll' as const,
+          top: 0,
+          icon: 'roundRect',
+          itemWidth: 22,
+          textStyle: { fontSize: 11 },
+        },
         tooltip: {
-          trigger: 'axis',
+          // With many years on screen an axis tooltip would list all of them, so
+          // past a handful the pointer reports only the line under the cursor.
+          trigger: view.series.length > 6 ? ('item' as const) : ('axis' as const),
           axisPointer: { type: 'line' },
-          formatter: (points: TooltipPoint[]) => {
+          formatter: (raw: TooltipPoint | TooltipPoint[]) => {
+            const points = Array.isArray(raw) ? raw : [raw];
             if (!points.length || !points[0].value) return '';
             const rows = points.map((p) => {
               const value = p.value?.[1];
@@ -240,7 +269,8 @@ export class EChartsAdapter implements ChartAdapter {
                 : `${value.toFixed(info?.decimals ?? 1)} ${info?.unit ?? ''}`.trim();
               return `${p.marker ?? ''}${p.seriesName}: <b>${shown}</b>`;
             });
-            return `${UTC_STAMP.format(points[0].value[0])} UTC<br>${rows.join('<br>')}`;
+            const stamp = view.xKind === 'dayOfYear' ? DAY_STAMP : UTC_STAMP;
+            return `${stamp.format(points[0].value[0])} UTC<br>${rows.join('<br>')}`;
           },
         },
         // Zoom and pan act on time only, so the fixed y-scale that makes years
@@ -270,7 +300,21 @@ export class EChartsAdapter implements ChartAdapter {
           showSymbol: false,
           connectNulls: false,
           sampling: 'lttb' as const,
-          lineStyle: { width: 1, opacity: view.lineOpacity ?? 1 },
+          ...(s.color ? { color: s.color, itemStyle: { color: s.color } } : {}),
+          lineStyle: {
+            width: 1,
+            opacity: view.lineOpacity ?? 1,
+            type: s.dash ?? ('solid' as const),
+            ...(s.color ? { color: s.color } : {}),
+          },
+          // Four or fewer series also get a direct label, so the eye does not
+          // have to travel to the legend and back.
+          endLabel: {
+            show: view.series.length > 1 && view.series.length <= 4,
+            formatter: s.label,
+            fontSize: 11,
+            distance: 4,
+          },
         })),
       },
       // Replace rather than merge, so dropping a series actually drops it.
