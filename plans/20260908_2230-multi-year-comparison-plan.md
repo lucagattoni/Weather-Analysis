@@ -1,6 +1,6 @@
 # Multi-year comparison — plan
 
-Status: **draft for review, not approved** · written 20260908 22:30 UTC · branch `20260908_2230-multi-year-plan`
+Status: **approved 20260908, ready to implement** · written 20260908 22:30 UTC · branch `20260908_2230-multi-year-plan`
 
 Builds on the POC (plan `20260908_2031-weather-viewer-poc-plan.md`, implemented and
 merged 20260908). Read that plan's section 10 first: it records what the built app
@@ -171,13 +171,13 @@ Dependencies still point one way. The chart library stays inside `src/chart/`.
 | `src/data/*` | **Unchanged.** |
 | `scripts/split_years.py` | Emits `aggregate` per variable in `meta.json`. |
 
-## 8. Open decisions — for the user
+## 8. Decisions taken 20260908
 
-| # | Question | Options | Recommendation |
+| # | Question | Chosen | Alternatives kept on record |
 |---|---|---|---|
-| A | 1946–2026 spans **nine decades**; the validated palette has **eight hues**, and generating a ninth is not allowed. | (i) The two partial decades share a hue: the 1940s has 4 years and the 2020s has 7, so 11 combinations of the 12 available, no collision. (ii) Hue cycles modulo 8, so the 1940s and 2020s collide, which is exactly the oldest-versus-newest comparison. (iii) Cap the selectable span at eight decades. | **(i)** — it costs one special case in the style function and never collides. |
-| B | 29 February on a shared Jan–Dec axis. | (i) Canonical leap year: 366 slots, non-leap years show a one-day gap at 29 Feb. (ii) Canonical non-leap year: drop 29 Feb from leap years, losing 24 real readings per leap year. | **(i)** — it matches the existing rule that missing data is a gap and never invents or discards readings. |
-| C | Does the day window survive a change to the year selection? | (i) Keep it: the window is in day-of-year, so it stays meaningful. (ii) Reset it. | **(i)** — the window no longer belongs to a particular year, so there is nothing to invalidate. |
+| A | 1946–2026 spans **nine decades**; the validated palette has **eight hues**, and generating a ninth is not allowed. | **Hue cycles modulo 8.** `hue = ((decade - 1940) / 10) mod 8`. The simplest rule and no special cases. Its cost, flagged before the choice and accepted: the 1940s and the 2020s land on the same hue, so a selection spanning both shows two decades in one colour. That is only reachable across the full 81-year span, which is past legibility for any encoding. | (i) The two partial decades share a hue — the 1940s has 4 years and the 2020s 7, so 11 of the 12 combinations, no collision; this was the recommendation. (iii) Cap the selectable span at eight decades. |
+| B | 29 February on a shared Jan–Dec axis. | **Canonical leap year**: 366 slots, and a non-leap year shows a one-day gap at 29 February. Matches the existing rule that absent data is a gap, and never invents or discards a reading. | (ii) Canonical non-leap year, dropping 29 February from leap years and losing 24 real readings each time. |
+| C | Does the day window survive a change to the year selection? | **Keep it.** Once the axis is day-of-year the window belongs to no particular year, so there is nothing to invalidate. | (ii) Reset it on every change. |
 
 ## 9. Steps
 
@@ -198,7 +198,8 @@ Section 8 of the POC plan still maps each of these to one module.
 
 - The eight hues' ramps are only worked out for blue. The other seven need generating
   from the same reference ramps and validating in both modes, which is step 2 above.
-- The three decisions in section 8 are unanswered.
+  Every generated ramp must pass the ordinal validator in both modes before it ships;
+  if a hue cannot make four steps, it takes three and the fourth slot is unused.
 - Whether the slider should later extend past 6 h. Nothing in the design prevents it;
   12 h and 24 h are measured in section 3 and are a one-line change to the step list.
   Left at 6 h because that is what was asked for.
