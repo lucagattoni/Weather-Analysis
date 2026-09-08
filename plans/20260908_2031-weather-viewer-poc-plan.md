@@ -103,6 +103,18 @@ Principles (modular without a framework):
 - **Sentinels and gaps are handled in the model**, never in the chunks or the adapter.
 - **No plugin system, no dependency injection, no event bus.** Modules and interfaces are the extension mechanism; the interfaces stay at three or four members.
 
+Replaceable blocks, and what keeps the rest working when one is swapped:
+
+| Block | Replace it with | Contract that protects the rest |
+|---|---|---|
+| Data source (`data/json-year-source.ts`) | Range-request source, DuckDB-WASM, a live API, an in-memory synthetic source | `DataSource` interface; the model only ever sees `Meta` and `YearData` |
+| Chart library (`chart/<library>.ts`) | Any of the libraries in section 5 | `ChartAdapter` + `ChartView`; the app never imports the library directly |
+| Model transforms (`model/*.ts`) | New transforms (aggregation, overlays) added beside the existing ones | Pure functions from `YearData` to `Series[]`; no I/O, no DOM |
+| Controls (`app/controls.ts`) | Multi-select, range slider, URL-driven state | They only write `AppState`; nothing reads the DOM elsewhere |
+| Preprocessing (`scripts/split_years.py`) | A TypeScript or pandas version, another chunking (A′, B) | The chunk schema in section 3 and `meta.json` |
+
+The guarantees are enforced, not promised: `tsc --noEmit` runs in `npm run build`, so a replacement that does not honour an interface fails to compile; each interface has at most four members, so a second implementation is cheap; and the second implementation of `DataSource` exists from day one as a ~20-line synthetic in-memory source used during development, which is what proves the seam is real rather than assumed.
+
 Interfaces (sketch, the final shape may differ in detail):
 
 ```ts
