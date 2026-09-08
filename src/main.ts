@@ -10,7 +10,7 @@ import type { DataSource } from './data/source.ts';
 import type { Meta, VariableMeta, YearData } from './data/types.ts';
 import { buildSeries, canonicalRange, yearRange } from './model/series.ts';
 import { axesFor } from './model/scales.ts';
-import { samplesPerDay } from './model/resample.ts';
+import { describeCadence } from './model/resample.ts';
 import { styleSeries } from './model/style.ts';
 import { CANONICAL_YEAR } from './chart/adapter.ts';
 
@@ -100,10 +100,8 @@ async function draw(meta: Meta, state: Readonly<AppState>): Promise<void> {
     0,
   );
   const points = series.reduce((total, s) => total + s.y.length, 0);
-  // "steps" rather than "means": rain and sunshine are summed, not averaged.
-  const detail = stepHours === 1
-    ? 'hourly'
-    : `${stepHours} h steps, ${samplesPerDay(stepHours)}/day`;
+  // A cadence, not "means": rain and sunshine are summed rather than averaged.
+  const detail = describeCadence(stepHours);
   const which = years.length === 1
     ? String(years[0])
     : `${years.length} years, ${Math.min(...years)}–${Math.max(...years)}`;

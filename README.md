@@ -37,14 +37,14 @@ tooltip, legend, dataZoom and canvas renderer are registered).
   years are also labelled at the end of their line.
 - **Variable** is a dropdown over the 13 numeric variables. The two SYNOP code
   columns (`ww`, `w`) are categorical and excluded.
-- **Detail** is a slider from 1 h to 24 h, one point per hour down to one per day.
-  It resamples the line in the browser and never moves on its own, so hourly stays
-  hourly however much you select. Only 1, 2, 3, 4, 6, 8, 12 and 24 are offered,
-  because they are the divisors of 24; a 5 h bucket would straddle midnight and drift
-  through the day. A point is drawn at the mean timestamp of the hours it covers.
-  The daily end matters for overlays: it is the only step that removes the within-day
-  swing entirely, which is the noise each line carries on top of the difference
-  between years.
+- **Detail** is a slider with eleven positions, one point per hour up to one per
+  week: 1, 2, 3, 4, 6, 8, 12 hours, then 1, 2, 4 and 7 days. It resamples in the
+  browser and never moves on its own, so hourly stays hourly however much you select.
+  Sub-day steps are the divisors of 24, because a 5 h bucket would straddle midnight
+  and drift through the day. A point is drawn at the mean timestamp of the hours it
+  covers. A short final bucket is dropped for summed variables, since a 7-day step
+  whose last block holds one day would draw a seventh of the rainfall of its
+  neighbours and look like a dry week.
 - **Opacity** is a slider on the line alpha, so overlapping lines stay visible. Below
   about 50% a single line gets genuinely faint against the background. The legend
   ignores it and stays readable.
@@ -166,17 +166,27 @@ plans/                 the approved plan and its amendments
 
 ### How many years is too many
 
-The picker will happily select thirty years, and the app will draw them. It is worth
-knowing what that gets you. Resampling smooths each line but does not move the lines
-apart: across twenty years the gap between the highest and lowest year is 10.7 °C at
-hourly and still 10.2 °C at six-hourly, while one year's median day already swings
-6.4 °C.
+The picker will happily select thirty years and the app will draw them. Whether that
+is readable depends entirely on the detail slider, and the trade is a real one.
 
-What resampling does change is the noise each line carries. That swing falls to
-4.2 °C at six-hourly, 1.9 °C at twelve, and to nothing at all at daily, which is why
-the slider reaches one point per day. Past roughly a dozen years you are still reading
-the shape of the cloud and the decade colours rather than following individual years,
-and the opacity slider is the tool for that. It is not a defect.
+Measured over twenty years of temperature on the fixed -15 to 30 axis:
+
+| Step | Points per pixel, per line | Gap between the highest and lowest year |
+|---|---|---|
+| 1 hour | 6.90 | 10.7 °C |
+| 6 hours | 1.15 | 10.2 °C |
+| 1 day | 0.29 | 8.9 °C |
+| 7 days | 0.04 | 6.4 °C |
+
+At hourly a single line already crosses each pixel column seven times, so twenty of
+them are a solid band whatever colours they carry. Coarser steps fix that: at one
+point a week each line is a smooth curve of 52 points and can be followed by eye.
+
+The cost is that the same averaging pulls every year toward the climatological mean,
+so the spread between years shrinks by 40% from hourly to weekly. You gain lines you
+can trace and lose some of the difference you were trying to see. Daily to weekly is
+the useful range for a wide selection; the opacity slider helps at any step by letting
+overlapping lines show through each other.
 
 The colours are generated and validated rather than chosen. Every ramp passes the
 ordinal checks and all eight hues pass the categorical checks against each other at

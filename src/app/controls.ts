@@ -1,5 +1,5 @@
 import type { Meta } from '../data/types.ts';
-import { STEP_HOURS, samplesPerDay } from '../model/resample.ts';
+import { STEP_HOURS, describeStep } from '../model/resample.ts';
 import { styleForYear } from '../model/style.ts';
 import type { Store } from './state.ts';
 
@@ -147,7 +147,7 @@ export function mountControls(meta: Meta, store: Store): void {
   });
 
   const showStep = (hours: number) => {
-    stepValue.textContent = `${hours} h · ${samplesPerDay(hours)}/day`;
+    stepValue.textContent = describeStep(hours);
   };
   const showOpacity = (fraction: number) => {
     opacityValue.textContent = `${Math.round(fraction * 100)}%`;

@@ -64,7 +64,15 @@ export function seriesFor(
     // Plotted at the mean timestamp of the hours it covers, so a 6-hour point
     // sits in the middle of its window rather than at its leading edge.
     x[b] = startMs + ((from + to - 1) / 2) * HOUR_MS;
-    y[b] = step === 1 ? hourly[from] : combine(hourly, from, to, variable.aggregate);
+    // A short final bucket cannot carry a total: a 7-day step whose last block
+    // holds one day would draw a seventh of the rainfall of its neighbours and
+    // look like a dry week. Means are unaffected, so only sums are dropped.
+    const short = to - from < step;
+    y[b] = step === 1
+      ? hourly[from]
+      : short && variable.aggregate === 'sum'
+        ? Number.NaN
+        : combine(hourly, from, to, variable.aggregate);
   }
 
   if (xKind === 'dayOfYear') {

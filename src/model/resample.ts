@@ -5,17 +5,35 @@ import type { Aggregate } from '../data/types.ts';
  *
  * Only divisors of 24 are offered: a 5-hour bucket would straddle midnight and
  * drift through the day, so the same slot would mean a different time of day on
- * consecutive days. The range runs from every hour to one point per day.
+ * consecutive days. The range runs from every hour to one point a week.
  *
- * The top of the range is where overlaid years actually separate. A 24-hour
- * bucket is the only step that removes the within-day swing completely: one
- * year's median day moves 6.4 °C at hourly and still 4.2 °C at six-hourly, which
- * is the noise each line carries on top of the difference between years.
+ * A 24-hour bucket is the first step that removes the within-day swing
+ * completely: one year's median day moves 6.4 °C at hourly and still 4.2 °C at
+ * six-hourly, which is the noise each line carries on top of the difference
+ * between years. Beyond a day the steps smooth weather itself, not the diurnal
+ * cycle, which is what makes many overlaid years readable as seasonal shapes.
+ *
+ * Multi-day buckets are blocks of hours counted from 1 January, so a leap year's
+ * block boundaries sit a day off a non-leap year's after February. Each block is
+ * still plotted at the real calendar date of its middle, so the overlay stays
+ * honest; the two just are not sampling identical date ranges, which they cannot,
+ * because the years are not the same length.
  */
-export const STEP_HOURS: readonly number[] = [1, 2, 3, 4, 6, 8, 12, 24];
+export const STEP_HOURS: readonly number[] = [1, 2, 3, 4, 6, 8, 12, 24, 48, 96, 168];
 
-export function samplesPerDay(stepHours: number): number {
-  return 24 / stepHours;
+/** How a step reads on the slider: below a day in hours, at or above it in days. */
+export function describeStep(stepHours: number): string {
+  if (stepHours < 24) return `${stepHours} h · ${24 / stepHours}/day`;
+  const days = stepHours / 24;
+  return days === 1 ? '1 day' : `${days} days`;
+}
+
+/** How a step reads mid-sentence, as the cadence of the points on the line. */
+export function describeCadence(stepHours: number): string {
+  if (stepHours === 1) return 'hourly';
+  if (stepHours === 24) return 'daily';
+  if (stepHours < 24) return `every ${stepHours} h`;
+  return `every ${stepHours / 24} days`;
 }
 
 /**
