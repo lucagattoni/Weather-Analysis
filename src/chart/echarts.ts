@@ -67,17 +67,19 @@ function toPairs(series: Series): Array<[number, number | null]> {
   return pairs;
 }
 
-function yAxisOption(axis: Axis) {
+function yAxisOption(axis: Axis, muted: string) {
   return {
     type: 'value' as const,
     name: axis.label,
     nameLocation: 'middle' as const,
     nameGap: 46,
+    nameTextStyle: { color: muted },
     min: axis.range[0],
     max: axis.range[1],
     position: axis.side,
-    axisLabel: { hideOverlap: true },
+    axisLabel: { hideOverlap: true, color: muted },
     splitLine: { show: true },
+    axisLine: { lineStyle: { color: muted } },
   };
 }
 
@@ -220,6 +222,12 @@ export class EChartsAdapter implements ChartAdapter {
 
   render(view: ChartView): void {
     const multi = view.series.length > 1;
+    // ECharts paints its own text at a fixed dark grey, which disappears on a
+    // dark surface. Take the colours from the stylesheet instead, so the chart
+    // follows the theme the rest of the page is already using.
+    const css = getComputedStyle(this.#container);
+    const ink = css.getPropertyValue('--fg').trim() || '#1a1a1a';
+    const muted = css.getPropertyValue('--muted').trim() || '#666666';
     this.#extent = [view.xRange[0], view.xRange[1]];
     const window_ = view.xWindow ?? view.xRange;
     this.#applied = [window_[0], window_[1]];
@@ -249,12 +257,17 @@ export class EChartsAdapter implements ChartAdapter {
           show: multi,
           type: 'scroll' as const,
           top: 0,
-          // 'line' rather than a filled block, so the legend shows each year's
-          // real dash pattern. Identity must not rest on colour alone.
-          icon: 'line',
-          itemWidth: 26,
-          itemHeight: 10,
-          textStyle: { fontSize: 11 },
+          // No `icon`: ECharts then draws each entry as the series' own line,
+          // which is what carries the dash pattern. Naming an icon (including
+          // the non-existent 'line') replaces that with a shape and loses it.
+          itemWidth: 28,
+          itemHeight: 12,
+          itemGap: 14,
+          textStyle: { fontSize: 12, color: ink },
+          pageTextStyle: { color: muted },
+          pageIconColor: muted,
+          pageIconInactiveColor: muted,
+          inactiveColor: muted,
           // The legend must stay readable however faint the lines are set, so it
           // ignores the opacity slider and draws a little thicker than the data.
           lineStyle: { width: 2, opacity: 1 },
@@ -297,6 +310,7 @@ export class EChartsAdapter implements ChartAdapter {
           max: view.xRange[1],
           axisLabel: {
             hideOverlap: true,
+            color: muted,
             // On the shared axis the year belongs to the series, so showing the
             // canonical year on the axis would be a lie about the data.
             ...(view.xKind === 'dayOfYear'
@@ -312,7 +326,7 @@ export class EChartsAdapter implements ChartAdapter {
               : {}),
           },
         },
-        yAxis: view.yAxes.map(yAxisOption),
+        yAxis: view.yAxes.map((a) => yAxisOption(a, muted)),
         series: view.series.map((s) => ({
           type: 'line' as const,
           name: s.label,

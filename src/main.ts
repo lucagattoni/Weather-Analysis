@@ -100,9 +100,10 @@ async function draw(meta: Meta, state: Readonly<AppState>): Promise<void> {
     0,
   );
   const points = series.reduce((total, s) => total + s.y.length, 0);
+  // "steps" rather than "means": rain and sunshine are summed, not averaged.
   const detail = stepHours === 1
     ? 'hourly'
-    : `${stepHours} h means, ${samplesPerDay(stepHours)}/day`;
+    : `${stepHours} h steps, ${samplesPerDay(stepHours)}/day`;
   const which = years.length === 1
     ? String(years[0])
     : `${years.length} years, ${Math.min(...years)}–${Math.max(...years)}`;

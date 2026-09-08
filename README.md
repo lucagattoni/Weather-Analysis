@@ -37,11 +37,14 @@ tooltip, legend, dataZoom and canvas renderer are registered).
   years are also labelled at the end of their line.
 - **Variable** is a dropdown over the 13 numeric variables. The two SYNOP code
   columns (`ww`, `w`) are categorical and excluded.
-- **Detail** is a slider from 1 h to 6 h. It resamples the line in the browser and
-  never moves on its own, so hourly stays hourly however much you select. Only 1, 2,
-  3, 4 and 6 are offered, because they are the divisors of 24; a 5 h bucket would
-  straddle midnight and drift through the day. A point is drawn at the mean timestamp
-  of the hours it covers.
+- **Detail** is a slider from 1 h to 24 h, one point per hour down to one per day.
+  It resamples the line in the browser and never moves on its own, so hourly stays
+  hourly however much you select. Only 1, 2, 3, 4, 6, 8, 12 and 24 are offered,
+  because they are the divisors of 24; a 5 h bucket would straddle midnight and drift
+  through the day. A point is drawn at the mean timestamp of the hours it covers.
+  The daily end matters for overlays: it is the only step that removes the within-day
+  swing entirely, which is the noise each line carries on top of the difference
+  between years.
 - **Opacity** is a slider on the line alpha, so overlapping lines stay visible. Below
   about 50% a single line gets genuinely faint against the background. The legend
   ignores it and stays readable.
@@ -167,9 +170,13 @@ The picker will happily select thirty years, and the app will draw them. It is w
 knowing what that gets you. Resampling smooths each line but does not move the lines
 apart: across twenty years the gap between the highest and lowest year is 10.7 °C at
 hourly and still 10.2 °C at six-hourly, while one year's median day already swings
-6.4 °C. So past roughly a dozen years you are reading the shape of the cloud and the
-decade colours, not following individual years. That is a legitimate view, and the
-opacity slider is the tool for it. It is not a defect.
+6.4 °C.
+
+What resampling does change is the noise each line carries. That swing falls to
+4.2 °C at six-hourly, 1.9 °C at twelve, and to nothing at all at daily, which is why
+the slider reaches one point per day. Past roughly a dozen years you are still reading
+the shape of the cloud and the decade colours rather than following individual years,
+and the opacity slider is the tool for that. It is not a defect.
 
 The colours are generated and validated rather than chosen. Every ramp passes the
 ordinal checks and all eight hues pass the categorical checks against each other at

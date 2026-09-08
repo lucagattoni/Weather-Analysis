@@ -5,9 +5,14 @@ import type { Aggregate } from '../data/types.ts';
  *
  * Only divisors of 24 are offered: a 5-hour bucket would straddle midnight and
  * drift through the day, so the same slot would mean a different time of day on
- * consecutive days.
+ * consecutive days. The range runs from every hour to one point per day.
+ *
+ * The top of the range is where overlaid years actually separate. A 24-hour
+ * bucket is the only step that removes the within-day swing completely: one
+ * year's median day moves 6.4 °C at hourly and still 4.2 °C at six-hourly, which
+ * is the noise each line carries on top of the difference between years.
  */
-export const STEP_HOURS: readonly number[] = [1, 2, 3, 4, 6];
+export const STEP_HOURS: readonly number[] = [1, 2, 3, 4, 6, 8, 12, 24];
 
 export function samplesPerDay(stepHours: number): number {
   return 24 / stepHours;

@@ -217,6 +217,8 @@ approved. What changed while building:
 | M4 | §6: "with four or fewer series the lines are also directly labelled" | Labels carry the series colour and collide-hide | Three labels stacked at the same y is worse than none. |
 | M5 | not specified | The tooltip switches from axis to item past six series, and drops the year on the shared axis | An axis tooltip would list all 36 years; and on the shared axis the year belongs to the series, not the x position. |
 | M6 | not specified | The x-axis labels omit the year in day-of-year mode | Otherwise the canonical year 2024 appears on the axis for every selected year, which is a lie about the data. |
+| M7 | §2 decision 5 as revised: a 1–6 h detail slider | The slider runs **1 h to 24 h**, one point per hour down to one per day | User request, 20260908, after seeing the overlay. Daily is the only step that removes the within-day swing completely: it falls from 6.4 °C at hourly to 4.2 °C at six-hourly, 1.9 °C at twelve and nothing at twenty-four. Still fully manual and still defaulting to hourly. |
+| M8 | not specified | Legend and axis text take their colour from the page's own CSS tokens | ECharts paints text at a fixed dark grey, which was invisible on the dark surface. The legend was present but unreadable, and `icon: 'line'` is not a valid ECharts icon so the swatch was not drawn at all. Removing the icon lets ECharts draw the series' own line, which is what carries the dash. |
 
 ### Verified
 
