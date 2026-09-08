@@ -216,3 +216,16 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- Node / TypeScript / Vite (Weather-Analysis) ---
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# macOS
+.DS_Store
+
+# Source data: the gzipped CSV and the info file are committed,
+# the uncompressed CSV is not (see CLAUDE.md, "Data").
+data/*.csv

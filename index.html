@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dublin Airport hourly weather</title>
+  </head>
+  <body>
+    <main>
+      <h1>Dublin Airport hourly weather</h1>
+
+      <form id="controls" autocomplete="off">
+        <label for="year">Year</label>
+        <input id="year" name="year" list="years" inputmode="numeric" size="6" />
+        <datalist id="years"></datalist>
+
+        <label for="variable">Variable</label>
+        <select id="variable" name="variable"></select>
+      </form>
+
+      <p id="status" role="status"></p>
+
+      <div id="chart"></div>
+
+      <footer>
+        Data: Met &Eacute;ireann, Dublin Airport hourly observations,
+        <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+      </footer>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
