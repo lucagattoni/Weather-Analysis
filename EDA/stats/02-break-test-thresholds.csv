@@ -1,5 +1,5 @@
-count,trend with step (per decade),trend p,step at 1993,step p,step CI low,step CI high
-frost days (Tmin < 0),-2.45352,0.01680,18.86615,0.00015,9.44432,28.28799
-ice days (Tmax < 0),-0.04062,0.72456,0.26665,0.62375,-0.81140,1.34469
-warm days (Tmax >= 20),2.60637,0.01139,-3.16504,0.50616,-12.60033,6.27024
-summer days (Tmax >= 25),0.22613,0.07821,-0.07119,0.90542,-1.26031,1.11793
+count,trend with step (per decade),trend p,step at 1993,step p,step CI low,step CI high,lag-1 autocorr,effective n
+frost days (Tmin < 0),-2.32111,0.03425,18.19639,0.00063,8.05474,28.33804,0.03997,72.92765
+ice days (Tmax < 0),-0.03428,0.77293,0.23459,0.67650,-0.88086,1.35004,0.00000,79.00000
+warm days (Tmax >= 20),2.92062,0.00556,-4.75472,0.32908,-14.39546,4.88603,0.00000,79.00000
+summer days (Tmax >= 25),0.24613,0.08984,-0.17237,0.79951,-1.52298,1.17825,0.09239,65.63639

@@ -24,8 +24,9 @@ of their conclusions reverse if it is ignored.
   no duplicate timestamps, no missing timestamps, and 306 null cells. Recomputing
   Met Éireann's published 1991-2020 normals from these rows reproduces the annual
   rainfall total to within 0.03%.
-- **Temperature is rising at about 0.14 °C per decade**, roughly 1.15 °C across
-  the record, with 2023 the warmest year and 2010 the coldest.
+- **Temperature is rising at 0.098 to 0.145 °C per decade**, roughly 0.8 to
+  1.2 °C across the record, with 2023 the warmest year and 2010 the coldest. The
+  range is the same data read with and without a correction for the 1993 break.
 - **Rainfall shows no detectable trend in anything.** Twelve measures tested,
   none significant, both the parametric and non-parametric tests agreeing on
   every one.

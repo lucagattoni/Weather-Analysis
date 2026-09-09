@@ -1,5 +1,5 @@
 series,OLS slope (degC/decade),CI low,CI high,p (autocorr-adjusted),Sen slope (degC/decade),Mann-Kendall p,Kendall tau,n years,lag-1 autocorr,effective n,methods agree,verdict
-"Whole record 1946-2025, no step term",0.09780,0.04849,0.14710,0.00021,0.10817,0.00000,0.35506,80.00000,0.18619,54.88577,True,no significant step (p = 0.16); the whole-record slope stands
+"Whole record 1946-2025, no step term",0.09780,0.04849,0.14710,0.00021,0.10817,0.00000,0.35506,80.00000,0.18619,54.88577,True,no significant step (p = 0.24); the whole-record slope stands
 Before the break 1946-1992,0.12757,0.01817,0.23698,0.02374,0.13653,0.00762,0.26920,47.00000,0.17347,33.10436,True,
 After the break 1994-2025,0.20070,0.00238,0.39902,0.04754,0.19308,0.03020,0.27016,32.00000,0.15621,23.35303,True,
-Joint trend-plus-step model,0.14333,,,0.00034,,,,,,,,"step -0.253 degC [-0.612, +0.106], p = 0.165"
+Joint trend-plus-step model,0.14511,,,0.00307,,,,,,,,"step -0.262 degC [-0.706, +0.182], p = 0.242"

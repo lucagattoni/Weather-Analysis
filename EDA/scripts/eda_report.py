@@ -960,6 +960,21 @@ def run_temperature(csv_path: Path) -> None:
     ]).set_index("count")
     save_table(break_thresholds, STATS / "02-break-test-thresholds.csv",
                float_format="%.5f")
+    # A small p-value for a step at 1993 only means something if 1993 is
+    # special. Scanning every candidate break year says whether it is.
+    placebo = pd.DataFrame([
+        {"series": name, **ec.placebo_break_scan(s)}
+        for name, s in [
+            ("Annual mean", ann),
+            ("Mean of daily maxima", frames["annual_max"]),
+            ("Mean of daily minima", frames["annual_min"]),
+            ("Diurnal temperature range",
+             frames["annual_max"] - frames["annual_min"]),
+        ]
+    ]).set_index("series")
+    save_table(placebo, STATS / "02-placebo-break-scan.csv", float_format="%.5f")
+    hourly_step = ec.table_hourly_step(cleaned[cleaned["year"] <= LAST_COMPLETE_YEAR])
+    save_table(hourly_step, STATS / "02-hourly-step.csv", float_format="%.5f")
     save_table(decades, STATS / "02-decades.csv", float_format="%.4f")
     save_table(thresholds, STATS / "02-thresholds.csv", float_format="%.1f")
     save_table(extremes, STATS / "02-extremes.csv", float_format="%.3f")
@@ -978,6 +993,7 @@ def run_temperature(csv_path: Path) -> None:
     ec.fig_temperature_thresholds(thresholds, FIGURES)
     ec.fig_distribution_shift(day, FIGURES)
     ec.fig_step_diagnosis(frames, FIGURES)
+    ec.fig_hourly_step(hourly_step, FIGURES)
     print(f"  tables -> {STATS}\n  figures -> {FIGURES}")
 
 

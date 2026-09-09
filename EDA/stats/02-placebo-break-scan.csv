@@ -1,0 +1,5 @@
+series,years scanned,years with step p < 0.05,share significant %,best-fitting break year,rank of 1993,p at 1993
+Annual mean,61,0,0.00000,2015,2,0.24171
+Mean of daily maxima,61,3,4.91803,1962,57,0.87474
+Mean of daily minima,61,10,16.39344,1994,2,0.00115
+Diurnal temperature range,61,34,55.73770,1994,3,0.00000

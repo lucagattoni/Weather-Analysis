@@ -412,7 +412,13 @@ def fit_trend(x: pd.Series | np.ndarray, y: pd.Series | np.ndarray) -> Trend:
         r1 = float(np.corrcoef(residuals[:-1], residuals[1:])[0, 1])
     else:
         r1 = 0.0
-    r1 = min(max(r1, 0.0), 0.99)  # a negative r1 would narrow the interval; don't
+    # Floor at zero rather than let a negative estimate narrow the interval.
+    # This is a deliberate one-directional choice, not a neutral safeguard: it
+    # only ever makes a p-value larger, never smaller. Where the fitted residual
+    # autocorrelation is negative it changes the answer, e.g. autumn rainfall
+    # reads p = 0.094 clamped against 0.056 unclamped. No conclusion in these
+    # documents turns on it, and it errs toward claiming less.
+    r1 = min(max(r1, 0.0), 0.99)
     n_eff = n * (1.0 - r1) / (1.0 + r1)
     n_eff = max(n_eff, 3.0)
 

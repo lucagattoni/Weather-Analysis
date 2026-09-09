@@ -19,6 +19,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from scipy import stats
+
 from eda_common import (
     BASELINE,
     DIVERGING,
@@ -71,10 +73,10 @@ def trend_row(label: str, trend: Trend, unit: str) -> dict:
     }
 
 
-def step_trend_model(series: pd.Series) -> dict:
+def step_trend_model(series: pd.Series, break_year: float | None = None) -> dict:
     """Fit the trend and a September 1993 step jointly, and let them compete.
 
-        y ~ intercept + b1 * (year - centre) + b2 * 1[year >= 1993.67]
+        y ~ intercept + b1 * (year - centre) + b2 * 1[year > break]
 
     This is the test that matters, and it is not the same as comparing
     sub-period slopes. A step and a trend are partly confounded: a jump halfway
@@ -82,30 +84,148 @@ def step_trend_model(series: pd.Series) -> dict:
     jump. Fitting both together asks the only useful question, which is how much
     of each the data supports once the other is allowed to explain what it can.
 
-    A significant step is not proof of an instrument fault. It is proof of a
-    discontinuity, and a discontinuity coinciding with a documented change in
-    observation practice, in one derived quantity and not its neighbours, is
-    what an instrument fault looks like. The document says which is which and on
-    what grounds.
+    Both p-values carry the same lag-1 autocorrelation correction that
+    `fit_trend` applies, for the same reason: annual weather values are not
+    independent draws, and an uncorrected p-value here would be more confident
+    than the evidence supports. Without it the daily-minimum step reads
+    p = 2e-05 rather than 7e-04. The correction changes no verdict in this
+    dataset but the uncorrected number is not the one to quote.
+
+    Two limits worth knowing before reading a p-value off this. The trend and
+    step regressors are strongly collinear for a break two thirds of the way
+    through a record, so the model has limited power and a non-significant step
+    is weak evidence of no step. And a significant step is not by itself
+    evidence of a step *here*: see `placebo_break_scan`.
+
+    1993 is excluded rather than assigned to a side. It is a transition year,
+    with eight months before the break and four after, which matches how the
+    sub-period fits in `break_test` treat it.
     """
     import statsmodels.api as sm
 
+    cut = BREAK_YEAR if break_year is None else break_year
     s = series.loc[1946:LAST_COMPLETE_YEAR].dropna()
+    s = s.loc[s.index != int(cut)]
     year = s.index.to_numpy(float)
     centre = year.mean()
     design = sm.add_constant(np.column_stack([
         year - centre,
-        (year >= BREAK_YEAR + 0.67).astype(float),
+        (year > cut).astype(float),
     ]))
-    model = sm.OLS(s.to_numpy(float), design).fit()
+    values = s.to_numpy(float)
+    model = sm.OLS(values, design).fit()
+
+    resid = model.resid
+    r1 = (float(np.corrcoef(resid[:-1], resid[1:])[0, 1])
+          if resid.std(ddof=0) > 0 else 0.0)
+    r1 = min(max(r1, 0.0), 0.99)
+    n = year.size
+    n_eff = max(n * (1.0 - r1) / (1.0 + r1), 4.0)
+    inflation = np.sqrt(n / n_eff)
+    df_eff = max(n_eff - 3.0, 1.0)
+    tcrit = float(stats.t.ppf(0.975, df_eff))
+
+    out = {}
+    for i, name in ((1, "trend"), (2, "step")):
+        se = float(model.bse[i]) * inflation
+        coef = float(model.params[i])
+        p = float(2.0 * stats.t.sf(abs(coef / se), df_eff)) if se > 0 else 1.0
+        key = "trend with step (per decade)" if name == "trend" else "step at 1993"
+        out[key] = coef * 10.0 if name == "trend" else coef
+        out[f"{name} p"] = p
+        if name == "step":
+            out["step CI low"] = coef - tcrit * se
+            out["step CI high"] = coef + tcrit * se
+    out["lag-1 autocorr"] = r1
+    out["effective n"] = float(n_eff)
+    return out
+
+
+def placebo_break_scan(series: pd.Series, lo: int = 1955, hi: int = 2015) -> dict:
+    """Fit the same step model at every candidate year, and rank the real one.
+
+    A very small p-value for a step at 1993 is only impressive if 1993 is
+    special. If most candidate years also clear the 5% level, then "significant
+    step at 1993" mostly says the series has multi-decadal structure, not that
+    it has a discontinuity at that date. This scan is what turns the claim from
+    a p-value into evidence: the case rests on 1993 ranking at or near the top
+    of every candidate, and on that rank coinciding with a documented change in
+    observation practice, rather than on the size of the p-value alone.
+    """
+    scores = {}
+    for candidate in range(lo, hi + 1):
+        try:
+            scores[candidate] = step_trend_model(series, break_year=candidate)["step p"]
+        except Exception:  # too few points on one side
+            continue
+    if not scores:
+        return {}
+    ordered = sorted(scores, key=lambda y: scores[y])
     return {
-        "trend with step (per decade)": float(model.params[1] * 10.0),
-        "trend p": float(model.pvalues[1]),
-        "step at 1993": float(model.params[2]),
-        "step p": float(model.pvalues[2]),
-        "step CI low": float(model.conf_int()[2][0]),
-        "step CI high": float(model.conf_int()[2][1]),
+        "years scanned": len(scores),
+        "years with step p < 0.05": sum(1 for v in scores.values() if v < 0.05),
+        "share significant %": 100.0 * sum(1 for v in scores.values() if v < 0.05)
+                               / len(scores),
+        "best-fitting break year": ordered[0],
+        "rank of 1993": ordered.index(BREAK_YEAR) + 1 if BREAK_YEAR in ordered else np.nan,
+        "p at 1993": scores.get(BREAK_YEAR, np.nan),
     }
+
+
+def table_hourly_step(cleaned: pd.DataFrame) -> pd.DataFrame:
+    """Test for the 1993 step at each fixed hour of the day, separately.
+
+    This is the test that decides whether the annual mean is contaminated, and
+    it is more powerful than testing the annual mean directly. Averaging 24
+    hours together dilutes a signal confined to some of them while keeping all
+    of the year-to-year noise, so the mean's own step test can come back
+    non-significant even when the step is real and well-determined.
+
+    It also distinguishes two very different explanations that the daily
+    minimum alone cannot. If the step were an extreme-tracking artefact, a
+    faster sensor catching sharper pre-dawn dips, it would move the daily
+    *minimum* while leaving fixed-hour means alone. If it appears at fixed
+    night hours, something changed about night-time temperature itself, which
+    points at the screen or the siting rather than the response time.
+    """
+    rows = []
+    for hour in range(24):
+        s = cleaned[cleaned["hour"] == hour].groupby("year")["temp"].mean()
+        model = step_trend_model(s)
+        rows.append({
+            "hour (UTC)": hour,
+            "step at 1993 (degC)": model["step at 1993"],
+            "step p": model["step p"],
+            "significant at 5%": "yes" if model["step p"] < 0.05 else "no",
+            "trend with step (degC/decade)": model["trend with step (per decade)"],
+            "trend p": model["trend p"],
+        })
+    out = pd.DataFrame(rows).set_index("hour (UTC)")
+    return out
+
+
+def fig_hourly_step(hourly: pd.DataFrame, figures: Path) -> None:
+    """The step by hour of day, with the hours that clear 5% marked."""
+    fig, ax = plt.subplots(figsize=(9.5, 3.8))
+    steps = hourly["step at 1993 (degC)"]
+    significant = hourly["significant at 5%"] == "yes"
+    ax.bar(hourly.index[significant], steps[significant], color=DIVERGING[2],
+           width=0.78, label="step significant at 5%")
+    ax.bar(hourly.index[~significant], steps[~significant], color=INK_MUTED,
+           width=0.78, alpha=0.45, label="not significant")
+    ax.axhline(0, color=INK_MUTED, linewidth=1.0)
+    mean_step = float(steps.mean())
+    ax.axhline(mean_step, color=INK, linewidth=1.8, linestyle=(0, (4, 2)),
+               label=f"mean across all 24 hours, {mean_step:+.3f} degC")
+    ax.set_xticks(range(0, 24, 3))
+    ax.set_xlabel("hour of day (UTC)")
+    ax.set_ylabel("step at Sept 1993 (degC)")
+    ax.set_title("The 1993 step is a night-time offset, not an artefact of "
+                 "tracking sharper minima")
+    ax.legend(loc="upper right", ncols=1)
+    ax.grid(axis="x", visible=False)
+    ax.set_ylim(None, 0.42)
+    save_fig(fig, figures / "02-hourly-step.png")
 
 
 def break_test(series: pd.Series, unit: str) -> pd.DataFrame:
@@ -373,6 +493,14 @@ def _longest_run_at_least(s: pd.Series, threshold: float = 1.0) -> int:
 
 
 def _longest_true_run(mask: np.ndarray) -> int:
+    """Longest run of True.
+
+    Note for a future data refresh: a NaN day compares False against every
+    threshold, so it ends a run rather than being skipped, and a gap would split
+    one long spell into two short ones. Currently inert, because exactly one day
+    in the whole file fails the daily completeness gate and it falls outside
+    every window used here.
+    """
     best = run = 0
     for value in mask:
         run = run + 1 if value else 0

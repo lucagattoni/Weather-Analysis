@@ -1,5 +1,5 @@
-series,trend with step (per decade),trend p,step at 1993,step p,step CI low,step CI high
-Annual mean,0.14333,0.00034,-0.25291,0.16472,-0.61193,0.10611
-Mean of daily maxima,0.14568,0.00069,0.06095,0.75444,-0.32568,0.44759
-Mean of daily minima,0.13825,0.00077,-0.84053,0.00002,-1.21111,-0.46996
-Diurnal temperature range,0.00742,0.76665,0.90148,0.00000,0.66758,1.13538
+series,trend with step (per decade),trend p,step at 1993,step p,step CI low,step CI high,lag-1 autocorr,effective n
+Annual mean,0.14511,0.00307,-0.26192,0.24171,-0.70563,0.18179,0.16897,56.16227
+Mean of daily maxima,0.15030,0.00413,0.03758,0.87474,-0.43821,0.51338,0.16625,56.47652
+Mean of daily minima,0.13674,0.00989,-0.83288,0.00115,-1.31691,-0.34884,0.21945,50.56630
+Diurnal temperature range,0.01355,0.62990,0.87046,0.00000,0.60582,1.13509,0.09319,65.53136

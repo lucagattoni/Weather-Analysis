@@ -16,12 +16,14 @@ uv run EDA/scripts/eda_report.py --section temperature
 
 ## The short version
 
-- **Dublin Airport has warmed by about 0.14 °C per decade**, roughly 1.15 °C
-  across the record. Both the parametric and the non-parametric test agree, and
-  the result survives the correction for the 1993 break.
-- **The naive figure is 0.098 °C per decade, and it is too low.** A discontinuity
-  at the break suppresses it. This is the opposite of the direction anyone would
-  worry about.
+- **Dublin Airport has warmed by between 0.098 and 0.145 °C per decade**,
+  roughly 0.8 to 1.2 °C across the record. The two figures are the same data
+  read with and without a correction for the September 1993 break, and
+  [§2.4](#24-does-the-artefact-reach-the-annual-mean) sets out why the corrected
+  0.145 is the better of them.
+- **The uncontaminated series agree with the corrected figure.** Daily maxima
+  cross the break cleanly and warm at 0.157 °C per decade; daily minima
+  corrected for their step warm at 0.137. Both sit near 0.145 and above 0.098.
 - **Three findings a straightforward analysis would get backwards.** Daily
   minima appear not to warm at all, frost days appear to increase, and the
   diurnal temperature range appears to grow. All three are the same artefact,
@@ -87,53 +89,120 @@ framing cannot name.
 
 Fit the trend and the step together and let them compete for the same variance:
 
-> temperature ~ intercept + trend × year + step × 1[year ≥ Sept 1993]
+> temperature ~ intercept + trend × year + step × 1[year > 1993]
 
-Applied to every derived temperature series, this localises the discontinuity
-precisely.
+1993 itself is dropped, as a transition year with eight months before the break
+and four after. Both p-values carry the same lag-1 autocorrelation correction
+used everywhere else in these documents; without it the daily-minimum step reads
+p = 2e-05 instead of the 0.001 below, which is more confidence than the evidence
+supports.
 
-| Series | Trend with the step in the model | Step at 1993 | Step p |
-|---|---|---|---|
-| Annual mean | +0.143 °C/decade | -0.25 °C | 0.16 |
-| Mean of daily maxima | +0.146 °C/decade | +0.06 °C | 0.75 |
-| **Mean of daily minima** | **+0.138 °C/decade** | **-0.84 °C** | **0.00002** |
-| **Diurnal temperature range** | **+0.007 °C/decade** | **+0.90 °C** | **4e-11** |
+| Series | Trend with the step in the model | Step at 1993 | 95% CI on the step | Step p |
+|---|---|---|---|---|
+| Annual mean | +0.145 °C/decade | -0.26 °C | -0.71 to +0.18 | 0.24 |
+| Mean of daily maxima | +0.150 °C/decade | +0.04 °C | -0.44 to +0.51 | 0.87 |
+| **Mean of daily minima** | **+0.137 °C/decade** | **-0.83 °C** | -1.32 to -0.35 | **0.001** |
+| **Diurnal temperature range** | **+0.014 °C/decade** | **+0.87 °C** | +0.61 to +1.14 | **<1e-5** |
 
 ![Where the 1993 step lives](figures/02-step-diagnosis.png)
 
-**The discontinuity is in the daily minimum and nowhere else.** The daily maximum
+**The discontinuity is in the daily minimum and not the maximum.** The maximum
 crosses September 1993 without a step worth mentioning. The minimum drops by
-0.84 °C. The difference between them therefore jumps by 0.90 °C, and the bottom
-panel of that figure shows about as clean a step as a real series ever produces.
+0.83 °C. The range between them jumps by 0.87 °C.
 
-### 2.3 Why this is an instrument artefact and not climate
+### 2.3 Is 1993 actually special, or would any year do?
 
-The evidence is circumstantial but it points one way, and the document states it
-as an inference rather than a fact.
+A small p-value for a step at 1993 means nothing unless 1993 is unusual. Fitting
+the same model at every candidate break year from 1955 to 2015 answers that.
 
-- It is **instantaneous**, at a boundary already known from the indicator flags
-  to be an observation-practice change. Climate does not step in one month.
-- It is **asymmetric in a way weather is not**. No physical mechanism lifts the
-  afternoon and drops the night on the same date while leaving the daily mean
-  statistically unmoved.
-- It is **confined to a derived quantity**. The daily minimum is an extreme of
-  hourly readings, and extremes are far more sensitive than means to a change in
-  sensor response time, screen design or sampling interval. A modern fast
-  thermistor tracks a brief pre-dawn dip that a slower liquid-in-glass sensor in
-  a larger screen would smooth away.
+| Series | Candidate years giving p < 0.05 | Best-fitting year | Rank of 1993 |
+|---|---|---|---|
+| Annual mean | 0 of 61 | 2015 | 2nd |
+| Mean of daily maxima | 3 of 61 | 1962 | **57th** |
+| Mean of daily minima | 10 of 61 | 1994 | **2nd** |
+| Diurnal temperature range | 34 of 61 | 1994 | **3rd** |
 
-The alternative, that Dublin's nights genuinely cooled 0.84 °C in one step in
-September 1993 while its days did not, has no mechanism and no counterpart in
-any regional record.
+Two things follow, and the second is a caution against the first.
 
-**What this document does about it.** The annual-mean step is not significant
-(p = 0.16), so the headline trend is quoted from the joint model at **+0.143 °C
-per decade** with the naive +0.098 stated alongside. Everything derived from the
-daily minimum is quoted from the joint model only, with the naive figure shown
-so a reader can see the size of the correction.
+- **1993 is genuinely the best-fitting break in the record** for the minimum and
+  the range, out of sixty-one candidates, and it is one of the *worst* for the
+  maximum at 57th. That specificity, landing on a date already known from the
+  indicator flags to be an observation-practice change, is the real evidence.
+- **The bare p-value is weaker than it looks.** For the diurnal range, a majority
+  of all candidate years also clear 5%, because the series has genuine
+  multi-decadal structure that a step term will always partly absorb. The case
+  rests on the rank and the metadata correspondence, not on the size of the
+  p-value.
+
+### 2.4 Does the artefact reach the annual mean?
+
+This is the question that decides the headline number, and the annual mean's own
+step test cannot answer it: p = 0.24 is not evidence of absence when the trend
+and step regressors are strongly collinear for a break two thirds of the way
+through a record, and when averaging 24 hours dilutes a signal confined to some
+of them while keeping all the noise.
+
+Testing each fixed hour of the day separately is both more powerful and more
+diagnostic.
+
+![The step by hour of day](figures/02-hourly-step.png)
+
+| Hours (UTC) | Step at 1993 | Significant at 5% |
+|---|---|---|
+| 20:00 to 04:00 | -0.41 to -0.78 °C | **9 of 9** |
+| 08:00 to 14:00 | +0.09 to +0.25 °C | 0 of 7 |
+
+**Nine of the twenty-four hours show an individually significant step, every one
+of them negative, and they form a single unbroken block from 20:00 to 04:00.**
+Roughly one hour would clear 5% by chance against the nine observed.
+
+That count is not a formal test and is not offered as one: adjacent hours are
+strongly correlated, so the twenty-four tests are nowhere near independent and
+the arithmetic of a binomial does not apply. The evidence is the *pattern*
+rather than the count, and it is the correlation between neighbouring hours that
+makes a contiguous same-signed night block hard to get by accident.
+
+Two conclusions follow.
+
+- **The step is a night-time offset, not an artefact of tracking sharper
+  minima.** Had a faster sensor merely been catching deeper pre-dawn dips, the
+  daily minimum would move and fixed-hour means would not. Fixed-hour night
+  means move, so something changed about night-time temperature itself, which
+  points at the radiation screen or the siting rather than the response time.
+- **The annual mean is affected.** The mean step across all 24 hours is
+  **-0.262 °C**, which is the annual-mean step estimate to three decimals. The
+  estimate is well determined; only its own significance test is underpowered.
+
+**What this document does about it.** The headline trend is quoted from the
+joint model at **+0.145 °C per decade**, and the naive +0.098 is stated beside
+it throughout. That choice rests on the hourly evidence above, not on the
+annual mean's own step test, which does not support it. A reader who rejects the
+hourly argument should read +0.098 instead, and the two bracket the answer.
+
+Two supporting checks point the same way. The daily maximum is uncontaminated on
+every test here, and it warms at +0.157 °C per decade naively. The daily minimum
+corrected for its step warms at +0.137. Both sit near the joint model's +0.145
+and well above the naive annual figure of +0.098, which is what a downward
+contamination of the mean would produce.
+
+### 2.5 Why an instrument and not the climate
+
+The evidence is circumstantial and the document states it as an inference.
+
+- It is **instantaneous**, at a boundary already known to be an
+  observation-practice change. Climate does not step in one month.
+- It is **confined to the night**, with no daytime counterpart. No physical
+  mechanism cools 20:00 to 04:00 by half a degree from one September while
+  leaving noon untouched.
+- It is **the best-fitting break year out of sixty-one** for the affected series
+  and near the worst for the unaffected one.
+
+The alternative, that Dublin's nights genuinely cooled 0.83 °C in one step in
+September 1993 while its days did not, has no mechanism.
 
 Machine-readable: `EDA/stats/02-break-test.csv`,
-`EDA/stats/02-break-test-all-series.csv`.
+`EDA/stats/02-break-test-all-series.csv`,
+`EDA/stats/02-placebo-break-scan.csv`, `EDA/stats/02-hourly-step.csv`.
 
 ## 3. Trends
 
@@ -155,11 +224,11 @@ description at all. Where they agree the finding is solid.
 
 **The last two rows of that table are wrong as descriptions of the climate**, and
 they are left in because they are what the standard method produces. Corrected
-for the 1993 step, daily minima warm at +0.138 °C per decade (p = 0.0008) and
-the diurnal range has no trend at all (+0.007 °C per decade, p = 0.77).
+for the 1993 step, daily minima warm at +0.137 °C per decade (p = 0.010) and
+the diurnal range has no trend at all (+0.014 °C per decade, p = 0.63).
 
 Once corrected, the picture is coherent and unremarkable: days and nights are
-warming at almost the same rate, +0.146 and +0.138 °C per decade.
+warming at almost the same rate, +0.150 and +0.137 °C per decade.
 
 Three of the four seasons warm significantly. **Autumn does not** (p = 0.089),
 and it is the one season where both tests agree there is no established trend.
@@ -210,23 +279,23 @@ Two of the four counts are built on the daily minimum and therefore inherit its
 
 | Count | Naive change, 1946-1975 to 1996-2025 | Trend with the step in the model | Step at 1993 | Step p |
 |---|---|---|---|---|
-| **Frost days (Tmin < 0)** | **22.9 → 30.7, rising** | **-2.45 days/decade, p = 0.017** | **+18.9 days** | **0.0002** |
-| Ice days (Tmax < 0) | 0.4 → 0.5 | -0.04 days/decade, p = 0.72 | +0.27 | 0.62 |
-| Warm days (Tmax ≥ 20) | 17.1 → 26.7 | +2.61 days/decade, p = 0.011 | -3.17 | 0.51 |
-| Summer days (Tmax ≥ 25) | 0.2 → 1.1 | +0.23 days/decade, p = 0.078 | -0.07 | 0.91 |
+| **Frost days (Tmin < 0)** | **22.9 → 30.7, rising** | **-2.32 days/decade, p = 0.034** | **+18.2 days** | **0.0006** |
+| Ice days (Tmax < 0) | 0.4 → 0.5 | -0.03 days/decade, p = 0.77 | +0.23 | 0.68 |
+| Warm days (Tmax ≥ 20) | 17.1 → 26.7 | +2.92 days/decade, p = 0.006 | -4.75 | 0.33 |
+| Summer days (Tmax ≥ 25) | 0.2 → 1.1 | +0.25 days/decade, p = 0.090 | -0.17 | 0.80 |
 
 **Frost days are the trap.** Read naively the record says Dublin gains eight
 frost days a year while warming, which should stop any reader. It is entirely
-the artefact: an artificial 0.84 °C drop in daily minima pushes borderline
-nights below zero, and the fitted step of +18.9 days is highly significant. With
-the step in the model, frost days **fall** by 2.45 per decade, which is what
+the artefact: an artificial 0.83 °C drop in daily minima pushes borderline
+nights below zero, and the fitted step of +18.2 days is highly significant. With
+the step in the model, frost days **fall** by 2.32 per decade, which is what
 warming predicts.
 
 The two maximum-based counts have no significant step and can be read directly.
-**Warm days above 20 °C rise by 2.6 per decade**, from about 17 a year in the
+**Warm days above 20 °C rise by 2.9 per decade**, from about 17 a year in the
 first thirty years to about 27 in the last thirty. Summer days above 25 °C are
-too rare at this station to establish a trend, at about one a year now against
-one every five years then.
+too rare at this station to establish a trend (p = 0.090), at about one a year
+now against one every five years then.
 
 Machine-readable: `EDA/stats/02-thresholds.csv`,
 `EDA/stats/02-break-test-thresholds.csv`.
