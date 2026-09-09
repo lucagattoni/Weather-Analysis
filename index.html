@@ -43,8 +43,28 @@
       <div id="chart"></div>
 
       <footer>
-        Data: Met &Eacute;ireann, Dublin Airport hourly observations,
-        <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+        <p>
+          Data: Met &Eacute;ireann, Dublin Airport hourly observations,
+          <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+        </p>
+        <p>
+          Analysis of this series:
+          <a href="https://github.com/lucagattoni/Weather-Analysis/blob/main/EDA/README.md"
+             target="_blank" rel="noopener">overview</a>,
+          <a href="https://github.com/lucagattoni/Weather-Analysis/blob/main/EDA/01-data-review.md"
+             target="_blank" rel="noopener">data review</a>,
+          <a href="https://github.com/lucagattoni/Weather-Analysis/blob/main/EDA/02-temperature.md"
+             target="_blank" rel="noopener">temperature</a>,
+          <a href="https://github.com/lucagattoni/Weather-Analysis/blob/main/EDA/03-precipitation.md"
+             target="_blank" rel="noopener">precipitation</a>.
+        </p>
+        <p class="caveat">
+          These are the observations as recorded, with no correction applied. The
+          station changed how it observes in
+          <a href="https://github.com/lucagattoni/Weather-Analysis/blob/main/EDA/01-data-review.md#10-data-quality-register"
+             target="_blank" rel="noopener">September 1993</a>, which moves eleven of
+          the thirteen variables, so a line spanning that date crosses a discontinuity.
+        </p>
       </footer>
     </main>
     <script type="module" src="/src/main.ts"></script>

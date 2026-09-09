@@ -8,6 +8,10 @@ per variable, so years are directly comparable by eye.
 Data: **Met Éireann**, Dublin Airport hourly observations, licensed
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
+**Live app: <https://lucagattoni.github.io/Weather-Analysis/>**
+**Analysis: [EDA/](EDA/README.md)** — what is in the data, what it says about
+warming and rainfall, and where it cannot be trusted.
+
 ## Run it
 
 ```
@@ -153,10 +157,34 @@ Four layers. Dependencies point one way, and only `src/main.ts` knows all four.
 implementation of `DataSource` that exists from day one, so swapping the line in
 `src/main.ts` runs the whole app with no chunks on disk.
 
+## Analysis
+
+`EDA/` holds an exploratory study of the same series the app plots: three
+documents, every figure, and every number behind them as CSV.
+
+| | Document | What it answers |
+|---|---|---|
+| 1 | [Complete data review](EDA/01-data-review.md) | What is in the file, and where it cannot be trusted |
+| 2 | [Temperature](EDA/02-temperature.md) | Long-term warming by year, season and decade, and the extremes |
+| 3 | [Precipitation](EDA/03-precipitation.md) | The same questions asked of rainfall |
+
+Two of its findings matter when reading charts in this app:
+
+- **The station changed how it observes in September 1993**, and the change moves
+  eleven of the thirteen variables. This app plots the observations as recorded and
+  applies no correction, so a line spanning 1993 crosses that discontinuity. The
+  [data-quality register](EDA/01-data-review.md#10-data-quality-register) says which
+  variables are affected.
+- **Temperature rises 0.098 to 0.145 °C per decade** across the record, which is
+  roughly 0.8 to 1.2 °C in total. That is around 2% of this app's 45 °C temperature
+  axis, which is why the trend is invisible in the chart even though it is real. The
+  study measures what the eye cannot.
+
 ## Layout
 
 ```
 data/                  source CSV (gzipped, committed) and the station info file
+EDA/                   the analysis: documents, figures, stats, scripts
 public/data/meta.json  station, years, and per-variable label, unit, range, decimals
 public/data/years/     81 chunks, one per year, ~455 KB each
 scripts/               build-time preprocessing

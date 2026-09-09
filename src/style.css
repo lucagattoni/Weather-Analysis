@@ -109,4 +109,9 @@ footer {
   font-size: 0.8rem;
   color: var(--muted);
 }
+footer p { margin: 0 0 0.3rem; }
+footer p:last-child { margin-bottom: 0; }
 footer a { color: inherit; }
+/* The 1993 discontinuity is a caveat on what the chart shows, so it needs to be
+   readable rather than fine print, but not louder than the chart itself. */
+footer .caveat { max-width: 68ch; }
