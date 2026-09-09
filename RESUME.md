@@ -1,7 +1,14 @@
 # RESUME: handover
 
-Updated 20260909 11:52 UTC. Read `CLAUDE.md` first, then this. Delete this file
+Updated 20260909 09:09 UTC. Read `CLAUDE.md` first, then this. Delete this file
 when the open decision below is settled and nothing is left in flight.
+
+> **The six commit subjects from `5753811` to `921d08e` carry wrong times.**
+> They were composed rather than read from the clock, and run one to three
+> hours ahead of the commits they label. The real times are 08:35 to 08:58
+> UTC on 20260909; `git log --pretty='%h %cI'` is the record to trust. The
+> history is public and deployed, so it was left as it stands rather than
+> force-pushed. Nothing else in the repo takes its dates from those strings.
 
 ## Where things stand
 
