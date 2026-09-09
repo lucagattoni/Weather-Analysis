@@ -22,7 +22,7 @@ Browser app in TypeScript that visualises the Met Éireann Dublin Airport hourly
 ## Languages
 
 - TypeScript in the browser, always: everything under `src/` (erasable syntax only, explicit `.ts` import extensions).
-- Python for build-time preprocessing only (`scripts/*.py`, pandas run by `uv run`, dependencies pinned in the sibling `.lock`). Decided 20260908; supersedes plan decision 4.
+- Python for build-time preprocessing and offline analysis only, run by `uv run` with dependencies pinned in the sibling `.lock`. Preprocessing that feeds the app lives in `scripts/*.py`; analysis that feeds only the EDA documents lives in `EDA/scripts/*.py`. Decided 20260908; supersedes plan decision 4.
 - Language boundary (plan §4): build-time code does whole-series, run-once work and emits facts as static files under `public/data/`; runtime code does interaction-dependent work on the slice in memory and decides presentation. Python never runs at runtime.
 
 ## Runtime and hosting
@@ -34,3 +34,9 @@ Browser app in TypeScript that visualises the Met Éireann Dublin Airport hourly
 - Source: Met Éireann, Dublin Airport hourly observations, licence CC BY 4.0. Credit it in the app footer and in the README.
 - Lazy-load one year at a time from `public/data/years/<year>.json`; never load the whole series. Chunks and `meta.json` are committed; their schema (plan §3) is the contract between the chunking script and the app.
 - `data/*.csv.gz` and the info file are committed; the uncompressed CSV is git-ignored. Regenerate with `uv run scripts/split_years.py --csv data/<file>.csv.gz --out public/data`; output must be deterministic so a re-run does not churn git.
+
+## Analysis (`EDA/`)
+
+- Exploratory analysis of the source series lives in `EDA/`, self-contained: `EDA/scripts/` generates `EDA/figures/` and `EDA/stats/`, which the numbered markdown documents embed. Regenerate with `uv run EDA/scripts/eda_report.py --section {review|temperature|precipitation|all}`; output must be deterministic.
+- Prose is written by hand, never generated; every number a document quotes must exist in an `EDA/stats/*.csv` so drift shows up as a git diff.
+- Read `EDA/01-data-review.md` §10 before trusting any statistic that crosses September 1993: the station changed observation practice there and it moves eleven of thirteen variables.
