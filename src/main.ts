@@ -45,7 +45,15 @@ const themeMode = (): 'light' | 'dark' => (darkQuery.matches ? 'dark' : 'light')
  */
 const sameDayIn = (ms: number, year: number): number => {
   const d = new Date(ms);
-  return Date.UTC(year, d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes());
+  const month = d.getUTCMonth();
+  // The canonical year is a leap year, so a window can start on 29 February.
+  // `Date.UTC` would roll that over to 1 March in a year that has no 29th, and
+  // a window from 29 Feb 20:00 to 1 Mar 02:00 then comes back as 1 Mar 20:00 to
+  // 1 Mar 02:00 -- backwards. Clamping to the last day the month really has
+  // keeps the window the right way round and within a day of where it was.
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const day = Math.min(d.getUTCDate(), lastDay);
+  return Date.UTC(year, month, day, d.getUTCHours(), d.getUTCMinutes());
 };
 const toDisplay = (win: [number, number], year: number): [number, number] =>
   [sameDayIn(win[0], year), sameDayIn(win[1], year)];

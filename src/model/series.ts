@@ -152,8 +152,11 @@ export function yearRange(years: readonly number[]): [number, number] {
  * a gap.
  */
 export function describeYears(selected: readonly number[], all: readonly number[]): string {
-  if (selected.length === 0) return 'none';
-  const list = [...selected].sort((a, b) => a - b);
+  // Deduplicated, not just sorted: the count and the contiguity test both read
+  // the length, and a repeated year would make a selection with a hole in it
+  // claim to be a solid run.
+  const list = [...new Set(selected)].sort((a, b) => a - b);
+  if (list.length === 0) return 'none';
   if (list.length === 1) return String(list[0]);
   const lo = list[0];
   const hi = list[list.length - 1];
