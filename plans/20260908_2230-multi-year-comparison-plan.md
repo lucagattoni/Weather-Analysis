@@ -278,6 +278,15 @@ No gesture needs a modifier key or a hover, because a phone has neither. Where
 the strip does not fit it keeps a usable tick width and scrolls inside its track,
 and its ticks grow taller for a coarse pointer.
 
+**Corrected 20260909, after review.** The drag is not universal, and the claim
+above that every gesture works with a finger was wrong. On a narrow screen the
+strip overflows its track and `touch-action: pan-x` gives a horizontal swipe to
+scrolling, which is how a finger reaches 1946; the browser cancels the pointer
+when it takes the pan, so the sweep never runs. The trade is deliberate — the
+old years have to be reachable — and tapping is the touch route to a multi-year
+selection. The hint under the strip is now written from `(pointer: coarse)` so
+it only ever promises the gesture the device actually has.
+
 **Alternatives weighed and rejected, kept on record.** Two separate From and To
 sliders, which the user suggested: it fixes the overlapping knobs but not the
 chips, because the selection would still be a range. Keeping the two knobs and

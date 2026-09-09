@@ -14,14 +14,20 @@ import type { Store } from './state.ts';
  * can express every selection, so every selected year gets a chip and every chip
  * removes.
  *
- * Every gesture below works with a finger and none needs a modifier key, because
- * a phone has no shift key and no hover:
+ * No gesture needs a modifier key or a hover, because a phone has neither:
  *
  *   tap a tick          adds that year, or removes it if it is already shown
  *   drag across ticks   adds every year swept, previewed live
  *   a chip              removes that year
- *   clear               removes all of them
+ *   only <year>         removes all but the most recent selected
  *   keyboard            arrows move the cursor, space toggles, shift-arrow sweeps
+ *
+ * The one gesture that is not universal is the drag. On a narrow screen the
+ * strip is wider than its track and `touch-action: pan-x` gives a horizontal
+ * swipe to scrolling, which is how a finger reaches 1946; the browser then
+ * cancels the pointer and the sweep never happens. Reaching the old years
+ * matters more than sweeping them, so the trade stands and the hint below says
+ * which gesture the device actually has. Tapping adds and removes everywhere.
  */
 export function mountControls(meta: Meta, store: Store): void {
   const q = <T extends Element>(sel: string): T => {
@@ -49,6 +55,19 @@ export function mountControls(meta: Meta, store: Store): void {
     window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 
   const label = (year: number) => (partial.has(year) ? `${year} (partial)` : String(year));
+
+  // Promise only the gesture this device has: a finger scrolls the strip rather
+  // than sweeping it, so telling a phone to "drag across for a span" is telling
+  // it to do something that will not work.
+  const coarse = window.matchMedia('(pointer: coarse)');
+  const showHint = () => {
+    hint.textContent = coarse.matches
+      ? 'tap a year to add or remove it, swipe the strip to reach older years'
+      : 'tap a year to add or remove it, drag across for a span';
+    strip.title = hint.textContent;
+  };
+  showHint();
+  coarse.addEventListener('change', showHint);
 
   /** The whole year selection. Sorted only on the way out. */
   const selected = new Set<number>(store.state.years.filter((y) => known.has(y)));

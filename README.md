@@ -35,10 +35,16 @@ tooltip, dataZoom and canvas renderer are registered).
   can be taken out again — except the last one: a selection of no years is not a
   state the app offers, so the gesture that would empty it does nothing, and the
   final chip is a plain legend entry with no remove control on it. No gesture needs
-  a modifier key or a hover, so the strip works the same with a finger; where it
-  does not fit it keeps a usable tick width and scrolls, and its ticks grow taller
-  for a coarse pointer. With a keyboard, arrows move the cursor, space toggles the
-  year under it and shift-arrow sweeps a span.
+  a modifier key or a hover. With a keyboard, arrows move the cursor, space toggles
+  the year under it and shift-arrow sweeps a span.
+- **The drag is the one gesture a phone does not get.** Where the strip is wider
+  than the screen it keeps a usable tick width and scrolls, and a horizontal swipe
+  scrolls it rather than sweeping it: that is how a finger reaches 1946, and the
+  browser cancels the pointer as soon as it takes the pan. Reaching the old years
+  is worth more than sweeping them, so tapping is the touch route to a multi-year
+  selection and the hint under the strip says which gesture the device has. Ticks
+  also grow taller for a coarse pointer, since a tall thin target is far easier to
+  hit than a small one.
 - **Overlay.** Two or more years share one Jan-to-Dec axis. Each year's colour comes
   from its decade, its shade from its position in the decade over three, and its dash
   from that position modulo three: 2020 to 2022 are one shade solid, dashed and
