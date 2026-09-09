@@ -285,6 +285,11 @@ export class EChartsAdapter implements ChartAdapter {
             bottom: 34,
             startValue: window_[0],
             endValue: window_[1],
+            // The shadow is drawn by data index, not by time, so it stretches a
+            // part-year series across the whole axis: 2026's seven months of
+            // readings filled the slider to December. A control that lies about
+            // where the data is, is worse than a plain one.
+            showDataShadow: false,
           },
         ],
         xAxis: {
