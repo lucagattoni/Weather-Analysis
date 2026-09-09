@@ -25,6 +25,11 @@ h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 1rem; }
 }
 #controls label { font-size: 0.85rem; color: var(--muted); }
 #controls select, #controls button {
+  /* "Cloud ceiling height (100s of ft)" is 33 characters, and a native select
+     sizes itself to its widest option: without this it pushes a 320px screen
+     into horizontal scroll rather than wrapping like everything else here. */
+  max-width: 100%;
+  min-width: 0;
   font: inherit;
   padding: 0.3rem 0.4rem;
   color: var(--fg);
@@ -47,7 +52,15 @@ h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 1rem; }
 /* Below about 730px the ticks would be under 8px each, so the strip keeps a
    usable tick width and scrolls instead. The scale scrolls with it, or the
    decade labels would drift off their ticks. */
-.year-track { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+/* The vertical padding is not decoration: `overflow-x: auto` makes overflow-y
+   compute to `auto` as well, so this box clips, and without room inside it the
+   focus ring on the strip would be cut off along its top edge. */
+.year-track {
+  max-width: 100%;
+  padding: 5px 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
 #year-strip, #year-scale { min-width: 730px; }
 
 #year-strip {
@@ -60,8 +73,12 @@ h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 1rem; }
   height: 26px;
   cursor: pointer;
   /* A horizontal drag scrolls the strip when it overflows, which is how a
-     finger reaches 1946; where it fits, the drag selects a span instead. */
-  touch-action: pan-x;
+     finger reaches 1946; where it fits, the drag selects a span instead.
+     `pan-y` is here because the strip is full width and near the top of the
+     page: with `pan-x` alone, a swipe that happened to start on it scrolled
+     nothing at all, because touch-action can only ever narrow what a gesture
+     may do and never hands it back to an ancestor. */
+  touch-action: pan-x pan-y;
 }
 #year-strip:focus { outline: none; }
 #year-strip:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
@@ -133,9 +150,12 @@ h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 1rem; }
   margin: 0.35rem 0 0.2rem;
 }
 #year-chips .hint { font-size: 0.75rem; color: var(--muted); margin-left: 0.35rem; }
-#year-chips button.clear { color: var(--muted); }
-#year-chips button.clear::after { content: none; }
-#year-chips button {
+#year-chips .chip.clear { color: var(--muted); }
+/* Every chip is a pill, whether or not it is a button. The last year standing
+   is a span, because there is nothing to remove it with, and styling only the
+   buttons left that one entry as bare text -- which is what a first visit shows,
+   since the app opens on a single year. */
+#year-chips .chip {
   font: inherit;
   font-size: 0.78rem;
   padding: 0.1rem 0.35rem;
@@ -143,10 +163,10 @@ h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 1rem; }
   background: var(--bg);
   border: 1px solid var(--line);
   border-radius: 999px;
-  cursor: pointer;
 }
-#year-chips button::after { content: ' \00d7'; color: var(--muted); }
-#year-chips button:hover { border-color: var(--fg); }
+#year-chips button.chip { cursor: pointer; }
+#year-chips button.chip:not(.clear)::after { content: ' \00d7'; color: var(--muted); }
+#year-chips button.chip:hover { border-color: var(--fg); }
 /* A line, not a block: a filled square hides the dash, and the dash is what
    separates the three years that share a shade. */
 #year-chips .swatch {
