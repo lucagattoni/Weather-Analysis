@@ -108,22 +108,27 @@ threat to the headline claim and it gets its own section, not a footnote.
 
 ## 5. Code layout
 
-Following the project rule that Python is a build-time step in `scripts/` run by
-`uv run` with a pinned sibling `.lock`.
+Python stays a build-time step run by `uv run` with a pinned sibling `.lock`,
+as the project already does. The scripts live inside `EDA/` rather than the
+repo-level `scripts/`, because `scripts/split_years.py` feeds the TypeScript app
+and these feed only these documents; co-locating them keeps `EDA/`
+self-contained and keeps the two audiences apart (user, 20260909).
 
 ```
-scripts/eda_common.py        loading, cleaning, aggregation ladder, trend fitting
-scripts/eda_report.py        --section {review,temperature,precipitation,all}
-scripts/eda_report.py.lock   pinned: pandas, numpy, matplotlib, scipy, statsmodels
-EDA/01-data-review.md        narrative, embeds figures and tables
+EDA/scripts/eda_common.py      loading, cleaning, aggregation ladder, trend fitting
+EDA/scripts/eda_report.py      --section {review,temperature,precipitation,all}
+EDA/scripts/eda_report.py.lock pinned: pandas, numpy, matplotlib, scipy, statsmodels
+EDA/01-data-review.md          narrative, embeds figures and tables
 EDA/02-temperature.md
 EDA/03-precipitation.md
-EDA/figures/*.png            every chart, regenerated deterministically
-EDA/stats/*.csv              every number the docs quote, machine-readable
+EDA/figures/*.png              every chart, regenerated deterministically
+EDA/stats/*.csv                every number the docs quote, machine-readable
 ```
 
 One script with a `--section` flag rather than three scripts, so there is one
-dependency set and one lock to keep current.
+dependency set and one lock to keep current. This layout is a change to the
+project convention recorded in `CLAUDE.md` ("Python for build-time preprocessing
+only (`scripts/*.py` ...)"), so that line is updated in the same change.
 
 **How the docs stay honest.** The script writes every figure and every quoted
 number into `EDA/figures/` and `EDA/stats/`. The prose is written by hand around

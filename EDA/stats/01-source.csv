@@ -1,0 +1,9 @@
+field,value
+source file,dublin_airport-meteo-1946-2026-data.csv
+sha256,7d8677d9fc947dfbf3fc5ebe7fb9e0239e4f2e48bf93800c5d8777d4a4a1f106
+rows,"706,369"
+columns,21
+first observation (UTC),1946-01-01 00:00:00
+last observation (UTC),2026-08-01 00:00:00
+station,"Dublin Airport, 53.428 N, -6.241 E, 71 m"
+licence,"Met Eireann, CC BY 4.0"

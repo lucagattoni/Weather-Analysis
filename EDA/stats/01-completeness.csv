@@ -1,0 +1,14 @@
+variable,label,unit,rows,null,null %,sentinel,sentinel %,usable,usable %
+temp,Air temperature,degC,706369,0,0.0000,0,0.0000,706369,100.0000
+rain,Precipitation amount,mm,706369,0,0.0000,0,0.0000,706369,100.0000
+wetb,Wet bulb temperature,degC,706369,0,0.0000,0,0.0000,706369,100.0000
+dewpt,Dew point temperature,degC,706369,0,0.0000,0,0.0000,706369,100.0000
+vappr,Vapour pressure,hPa,706369,1,0.0001,0,0.0000,706368,99.9999
+rhum,Relative humidity,%,706369,1,0.0001,0,0.0000,706368,99.9999
+msl,Mean sea level pressure,hPa,706369,0,0.0000,0,0.0000,706369,100.0000
+wdsp,Mean wind speed,knot,706369,0,0.0000,0,0.0000,706369,100.0000
+wddir,Predominant wind direction,deg,706369,1,0.0001,12472,1.7656,693896,98.2342
+sun,Sunshine duration,h,706369,0,0.0000,0,0.0000,706369,100.0000
+vis,Visibility,m,706369,255,0.0361,0,0.0000,706114,99.9639
+clht,Cloud ceiling height,100s of ft,706369,24,0.0034,187417,26.5324,518928,73.4642
+clamt,Cloud amount,okta,706369,24,0.0034,1,0.0001,706344,99.9965

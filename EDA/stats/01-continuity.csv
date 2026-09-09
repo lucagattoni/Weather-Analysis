@@ -1,0 +1,7 @@
+check,value
+expected hourly timestamps,"706,369"
+rows present,"706,369"
+distinct timestamps,"706,369"
+duplicate timestamps,0
+missing timestamps,0
+distinct inter-row gaps,"0 days 01:00:00 x 706,368"

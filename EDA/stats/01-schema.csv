@@ -1,0 +1,22 @@
+column,role,meaning,unit,note
+date,timestamp,Date and time,UTC,
+ind_rain,indicator,Indicator qualifying `rain`,code,named `ind` in the source header
+rain,variable,Precipitation amount,mm,
+ind_temp,indicator,Indicator qualifying `temp`,code,named `ind` in the source header
+temp,variable,Air temperature,degC,
+ind_wetb,indicator,Indicator qualifying `wetb`,code,named `ind` in the source header
+wetb,variable,Wet bulb temperature,degC,
+dewpt,variable,Dew point temperature,degC,
+vappr,variable,Vapour pressure,hPa,
+rhum,variable,Relative humidity,%,
+msl,variable,Mean sea level pressure,hPa,
+ind_wdsp,indicator,Indicator qualifying `wdsp`,code,named `ind` in the source header
+wdsp,variable,Mean wind speed,knot,
+ind_wddir,indicator,Indicator qualifying `wddir`,code,named `ind` in the source header
+wddir,variable,Predominant wind direction,deg,"0 = 0 = calm, which is not a direction and is not north (360 is north)"
+ww,synop code,Present weather (SYNOP),code,
+w,synop code,Past weather (SYNOP),code,
+sun,variable,Sunshine duration,h,
+vis,variable,Visibility,m,
+clht,variable,Cloud ceiling height,100s of ft,999 = 999 = no cloud ceiling detected
+clamt,variable,Cloud amount,okta,9 = 9 = sky obscured; the okta scale is 0..8

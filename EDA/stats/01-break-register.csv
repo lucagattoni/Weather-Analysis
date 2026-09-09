@@ -1,0 +1,18 @@
+quantity,1946-1992,1994-2025,step,step / annual SD
+Air temperature (degC),9.5243,9.8501,0.3258,0.6849
+Precipitation amount (mm),749.3383,775.7031,26.3648,0.2329
+Wet bulb temperature (degC),8.0476,8.4667,0.4191,0.9494
+Dew point temperature (degC),6.3603,6.9499,0.5896,1.1527
+Vapour pressure (hPa),10.0129,10.3980,0.3850,1.1451
+Relative humidity (%),81.4347,83.2223,1.7877,0.9535
+Mean sea level pressure (hPa),1013.6510,1013.3915,-0.2595,-0.1677
+Mean wind speed (knot),9.9864,10.2913,0.3050,0.3902
+Sunshine duration (h),1454.8574,1490.3781,35.5207,0.3167
+Visibility (m),24588.6807,27352.9522,2764.2715,1.1777
+Cloud ceiling height (100s of ft),52.0953,63.7983,11.7030,1.5732
+Cloud amount (okta),5.5839,5.5722,-0.0117,-0.0726
+Hours recording any rain (%),11.6447,13.1442,1.4995,0.9871
+Hours recording over 1 mm of rain (%),2.4878,2.4876,-0.0002,-0.0005
+Hours recorded as calm (%),2.9308,0.1351,-2.7957,-1.5857
+Hours with no cloud ceiling (%),27.5529,25.0075,-2.5454,-0.8994
+Hours flagged trace (%),28.0995,0.0000,-28.0995,-2.0108
