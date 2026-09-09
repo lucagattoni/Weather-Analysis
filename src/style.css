@@ -40,16 +40,22 @@ h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 1rem; }
 /* The year strip: one tick per year in the data. Which tick the pointer is on
    is answered by hit-testing the DOM, not by dividing the width, so the strip is
    free to scroll on a narrow screen and to space its ticks how it likes. */
-.year-field { flex: 1 1 100%; }
+/* `min-width: 0` or the flex item takes its content's minimum size, which is
+   the strip's 730px, and the page scrolls sideways instead of the strip. */
+.year-field { flex: 1 1 100%; min-width: 0; }
 
 /* Below about 730px the ticks would be under 8px each, so the strip keeps a
    usable tick width and scrolls instead. The scale scrolls with it, or the
    decade labels would drift off their ticks. */
-.year-track { overflow-x: auto; overscroll-behavior-x: contain; }
+.year-track { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
 #year-strip, #year-scale { min-width: 730px; }
 
 #year-strip {
   display: flex;
+  /* Most recent first, so the years most often looked at are at the near edge
+     and are what a narrow screen shows before it is scrolled. The ticks stay in
+     ascending DOM order; only the reading direction is reversed. */
+  flex-direction: row-reverse;
   align-items: flex-end;
   height: 26px;
   cursor: pointer;
@@ -86,6 +92,12 @@ h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 1rem; }
 #year-strip:focus .tick.cursor::after { box-shadow: 0 0 0 2px var(--fg); }
 
 #year-scale { position: relative; height: 1.1em; margin-top: 0.15rem; }
+#year-hint {
+  margin: 0.2rem 0 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
 #year-scale span {
   position: absolute;
   transform: translateX(-50%);
@@ -104,12 +116,21 @@ h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 1rem; }
   #year-strip .tick.on.partial::after { height: 24px; }
 }
 
+/* The chart's legend and its year controls are one row: centred under the
+   title, immediately above the plot, where a legend goes. */
+#chart-title {
+  margin: 0.9rem 0 0;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
 #year-chips {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 0.3rem;
-  margin: 0.6rem 0 0;
+  margin: 0.35rem 0 0.2rem;
 }
 #year-chips .hint { font-size: 0.75rem; color: var(--muted); margin-left: 0.35rem; }
 #year-chips button.clear { color: var(--muted); }
@@ -126,13 +147,23 @@ h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 1rem; }
 }
 #year-chips button::after { content: ' \00d7'; color: var(--muted); }
 #year-chips button:hover { border-color: var(--fg); }
+/* A line, not a block: a filled square hides the dash, and the dash is what
+   separates the three years that share a shade. */
 #year-chips .swatch {
   display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-  margin-right: 0.3rem;
+  width: 20px;
+  height: 0;
+  border-top-width: 2px;
+  margin-right: 0.35rem;
   vertical-align: middle;
+}
+
+/* On a narrow screen every control gets its own line anyway, so the fixed
+   width that keeps the readouts from jittering on a wide one only wastes room. */
+@media (max-width: 560px) {
+  #controls { gap: 0.4rem 0.6rem; }
+  #controls output { min-width: 0; }
+  #controls input[type='range'] { width: 84px; }
 }
 
 #status { min-height: 1.2em; margin: 0.6rem 0; font-size: 0.85rem; color: var(--muted); }

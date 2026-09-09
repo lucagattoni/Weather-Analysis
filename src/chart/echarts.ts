@@ -5,8 +5,6 @@ import { LineChart } from 'echarts/charts';
 import {
   DataZoomComponent,
   GridComponent,
-  LegendComponent,
-  TitleComponent,
   TooltipComponent,
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
@@ -19,9 +17,7 @@ import type { Axis, ChartAdapter, ChartView, Series } from './adapter.ts';
 echarts.use([
   LineChart,
   GridComponent,
-  TitleComponent,
   TooltipComponent,
-  LegendComponent,
   DataZoomComponent,
   CanvasRenderer,
 ]);
@@ -68,8 +64,6 @@ function toPairs(series: Series): Array<[number, number | null]> {
   }
   return pairs;
 }
-
-const TITLE_SIZE = 15;
 
 function yAxisOption(axis: Axis, muted: string) {
   return {
@@ -230,17 +224,10 @@ export class EChartsAdapter implements ChartAdapter {
     // dark surface. Take the colours from the stylesheet instead, so the chart
     // follows the theme the rest of the page is already using.
     const css = getComputedStyle(this.#container);
-    const ink = css.getPropertyValue('--fg').trim() || '#1a1a1a';
     const muted = css.getPropertyValue('--muted').trim() || '#666666';
     this.#extent = [view.xRange[0], view.xRange[1]];
     const window_ = view.xWindow ?? view.xRange;
     this.#applied = [window_[0], window_[1]];
-
-    // The title names the variable and the years; the app composed the words.
-    const title = view.title ?? view.yAxes.map((a) => a.label).join(' · ');
-    // A title wider than the chart would run off both edges rather than one, so
-    // it is cut to fit instead. Only a phone plus a long variable reaches this.
-    const titleRoom = Math.max(120, this.#container.clientWidth - 16);
 
     const axisIndex = new Map(view.yAxes.map((a, i) => [a.scale, i]));
     const decimalsFor = new Map(view.yAxes.map((a) => [a.scale, a.decimals]));
@@ -256,51 +243,18 @@ export class EChartsAdapter implements ChartAdapter {
         animation: false,
         // `containLabel` reserves exactly what the tick labels need instead of a
         // fixed gutter, so the plot keeps the full width on a narrow screen and
-        // still fits a four-digit pressure. The top leaves a line for the axis
-        // name, which now sits there rather than down the left edge.
+        // still fits a four-digit pressure. The title and the legend are HTML
+        // above the canvas, so the top only has to clear the highest y label.
         grid: {
           left: 4,
           right: multi ? 56 : 10,
-          top: multi ? 52 : 30,
+          top: 12,
           bottom: 92,
           containLabel: true,
         },
-        // What is plotted, centred across the top of the chart, with the legend
-        // under it. Horizontal, so it costs height rather than the width a
-        // rotated axis name used to take out of the plot.
-        title: {
-          text: title,
-          left: 'center' as const,
-          top: 0,
-          textStyle: {
-            color: ink,
-            fontSize: TITLE_SIZE,
-            fontWeight: 600 as const,
-            width: titleRoom,
-            overflow: 'truncate' as const,
-          },
-        },
-        // Identity is never colour alone: the legend renders each year's real
-        // line style, and a small selection is labelled at the line's end too.
-        legend: {
-          show: multi,
-          type: 'scroll' as const,
-          top: 26,
-          // No `icon`: ECharts then draws each entry as the series' own line,
-          // which is what carries the dash pattern. Naming an icon (including
-          // the non-existent 'line') replaces that with a shape and loses it.
-          itemWidth: 28,
-          itemHeight: 12,
-          itemGap: 14,
-          textStyle: { fontSize: 12, color: ink },
-          pageTextStyle: { color: muted },
-          pageIconColor: muted,
-          pageIconInactiveColor: muted,
-          inactiveColor: muted,
-          // The legend must stay readable however faint the lines are set, so it
-          // ignores the opacity slider and draws a little thicker than the data.
-          lineStyle: { width: 2, opacity: 1 },
-        },
+        // Identity is never colour alone. The legend is the chip list above the
+        // chart: HTML, so it doubles as the control that removes a year, and one
+        // list rather than a legend and a set of chips saying the same thing.
         tooltip: {
           // With many years on screen an axis tooltip would list all of them, so
           // past a handful the pointer reports only the line under the cursor.

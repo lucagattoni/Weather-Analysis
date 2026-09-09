@@ -19,10 +19,17 @@ const source: DataSource = new JsonYearSource();
 
 const chartEl = document.querySelector<HTMLDivElement>('#chart');
 const statusEl = document.querySelector<HTMLParagraphElement>('#status');
-if (!chartEl || !statusEl) throw new Error('index.html is missing #chart or #status');
+const titleEl = document.querySelector<HTMLParagraphElement>('#chart-title');
+if (!chartEl || !statusEl || !titleEl) {
+  throw new Error('index.html is missing #chart, #status or #chart-title');
+}
 
 const say = (message: string) => {
   statusEl.textContent = message;
+};
+/** What the chart is showing, above it. HTML rather than canvas, so it wraps. */
+const name = (message: string) => {
+  titleEl.textContent = message;
 };
 
 const adapter = new EChartsAdapter(chartEl);
@@ -74,8 +81,8 @@ async function draw(meta: Meta, state: Readonly<AppState>): Promise<void> {
       yAxes: axes,
       series: [],
       lineOpacity,
-      title: named,
     });
+    name(named);
     say('No years shown. Click a year on the strip above, or pick one from Add.');
     return;
   }
@@ -108,8 +115,8 @@ async function draw(meta: Meta, state: Readonly<AppState>): Promise<void> {
     yAxes: axes,
     series,
     lineOpacity,
-    title: `${named} · ${which}`,
   });
+  name(`${named} · ${which}`);
 
   const gaps = series.reduce(
     (total, s) => total + s.y.reduce((n, v) => (Number.isNaN(v) ? n + 1 : n), 0),
@@ -118,8 +125,10 @@ async function draw(meta: Meta, state: Readonly<AppState>): Promise<void> {
   const points = series.reduce((total, s) => total + s.y.length, 0);
   // A cadence, not "means": rain and sunshine are summed rather than averaged.
   const detail = describeCadence(stepHours);
+  // The years are in the title above the chart, so the status line does not
+  // name them a second time.
   say(
-    `${which}: ${points.toLocaleString('en-GB')} points, ${detail}`
+    `${points.toLocaleString('en-GB')} points, ${detail}`
     + (gaps ? `, ${gaps.toLocaleString('en-GB')} shown as gaps` : '')
     + '. Scroll to zoom, drag to pan.',
   );

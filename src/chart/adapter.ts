@@ -32,8 +32,6 @@ export interface ChartView {
   xWindow?: [number, number];
   yAxes: Axis[];
   series: Series[];
-  /** One line naming what is plotted. The app writes the words, the chart places them. */
-  title?: string;
   /** 0..1. Below 1, overlapping lines show through each other. */
   lineOpacity?: number;
 }

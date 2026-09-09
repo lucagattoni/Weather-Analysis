@@ -29,9 +29,11 @@ export function mountControls(meta: Meta, store: Store): void {
     if (!el) throw new Error(`index.html is missing ${sel}`);
     return el;
   };
+  const track = q<HTMLDivElement>('.year-track');
   const strip = q<HTMLDivElement>('#year-strip');
   const scale = q<HTMLDivElement>('#year-scale');
   const chips = q<HTMLParagraphElement>('#year-chips');
+  const hint = q<HTMLParagraphElement>('#year-hint');
   const variableSelect = q<HTMLSelectElement>('#variable');
   const stepInput = q<HTMLInputElement>('#step');
   const stepValue = q<HTMLOutputElement>('#step-value');
@@ -72,7 +74,8 @@ export function mountControls(meta: Meta, store: Store): void {
       if (year % 10 !== 0) return [];
       const el = document.createElement('span');
       el.textContent = String(year);
-      el.style.left = `${((i + 0.5) / years.length) * 100}%`;
+      // Mirrored, because the strip reads right to left in time.
+      el.style.left = `${(1 - (i + 0.5) / years.length) * 100}%`;
       return [el];
     }),
   );
@@ -113,20 +116,28 @@ export function mountControls(meta: Meta, store: Store): void {
     strip.setAttribute('aria-activedescendant', `year-tick-${cursor}`);
   };
 
+  /**
+   * The chips are the chart's legend as well as its controls: one list, not a
+   * legend and a set of chips naming the same years. So the swatch draws the
+   * year's real line, dash and all, because identity is never colour alone --
+   * two of the three shades in a decade differ only by their dash pattern.
+   */
   const paintChips = (set: ReadonlySet<number>) => {
     const mode = themeMode();
     const list = sorted(set);
     const nodes: Node[] = list.map((year) => {
+      const style = styleForYear(year, mode);
       const button = document.createElement('button');
       button.type = 'button';
       button.title = `Remove ${year}`;
       const swatch = document.createElement('span');
       swatch.className = 'swatch';
-      swatch.style.background = styleForYear(year, mode).color;
+      swatch.style.borderTopColor = style.color;
+      swatch.style.borderTopStyle = style.dash === 'solid' ? 'solid' : style.dash;
       button.append(swatch, document.createTextNode(label(year)));
       button.addEventListener('click', () => {
         selected.delete(year);
-        publish();
+        publishByHand();
       });
       return button;
     });
@@ -138,17 +149,32 @@ export function mountControls(meta: Meta, store: Store): void {
       clear.textContent = 'clear';
       clear.addEventListener('click', () => {
         selected.clear();
-        publish();
+        publishByHand();
       });
       nodes.push(clear);
     }
-    const hint = document.createElement('span');
-    hint.className = 'hint';
-    hint.textContent = list.length
-      ? 'tap a year to add or remove it, drag across for a span'
-      : 'no years shown — tap a year above';
-    nodes.push(hint);
+    if (list.length === 0) {
+      const empty = document.createElement('span');
+      empty.className = 'hint';
+      empty.textContent = 'no years shown — tap a year above';
+      nodes.push(empty);
+    }
     chips.replaceChildren(...nodes);
+  };
+
+  /**
+   * On a narrow screen the strip is wider than the track and scrolls inside it,
+   * so a year the app just selected can be off screen. Only `scrollLeft` moves:
+   * scrollIntoView would take the page with it.
+   */
+  const keepVisible = (year: number) => {
+    const el = ticks[years.indexOf(year)];
+    if (!el) return;
+    const view = track.getBoundingClientRect();
+    const tick = el.getBoundingClientRect();
+    const margin = 24;
+    if (tick.left < view.left) track.scrollLeft -= view.left - tick.left + margin;
+    else if (tick.right > view.right) track.scrollLeft += tick.right - view.right + margin;
   };
 
   /**
@@ -165,6 +191,13 @@ export function mountControls(meta: Meta, store: Store): void {
     paintStrip(selected);
     paintChips(selected);
     store.update({ years: sorted(selected) });
+  };
+
+  // The gesture hint is a first-run instruction. Once a year has been picked by
+  // hand it has been read, and the row it costs is better spent on the chart.
+  const publishByHand = () => {
+    hint.hidden = true;
+    publish();
   };
 
   // The tick under a point, found by hit-testing the DOM rather than by dividing
@@ -237,7 +270,7 @@ export function mountControls(meta: Meta, store: Store): void {
     endDrag(event.pointerId);
     selected.clear();
     for (const year of result) selected.add(year);
-    publish();
+    publishByHand();
   });
 
   // A touch that turns into a scroll, or a pointer the browser takes away.
@@ -251,20 +284,21 @@ export function mountControls(meta: Meta, store: Store): void {
   strip.addEventListener('keydown', (event) => {
     const i = years.indexOf(cursor);
     let next = i;
+    // The strip runs most-recent-first, so left is later and right is earlier.
     switch (event.key) {
-      case 'ArrowLeft': next = i - 1; break;
-      case 'ArrowRight': next = i + 1; break;
+      case 'ArrowLeft': next = i + 1; break;
+      case 'ArrowRight': next = i - 1; break;
       case 'PageDown': next = i - 10; break;
       case 'PageUp': next = i + 10; break;
-      case 'Home': next = 0; break;
-      case 'End': next = years.length - 1; break;
+      case 'Home': next = years.length - 1; break;
+      case 'End': next = 0; break;
       case ' ':
       case 'Enter':
         event.preventDefault();
         if (selected.has(cursor)) selected.delete(cursor);
         else selected.add(cursor);
         keyAnchor = cursor;
-        publish();
+        publishByHand();
         return;
       default:
         return;
@@ -273,7 +307,8 @@ export function mountControls(meta: Meta, store: Store): void {
     cursor = years[Math.min(years.length - 1, Math.max(0, next))];
     if (event.shiftKey) for (const year of spanBetween(keyAnchor, cursor)) selected.add(year);
     else keyAnchor = cursor;
-    publish();
+    publishByHand();
+    keepVisible(cursor);
   });
 
   variableSelect.addEventListener('change', () => {
@@ -315,4 +350,5 @@ export function mountControls(meta: Meta, store: Store): void {
   });
 
   publish();
+  keepVisible(cursor);
 }
