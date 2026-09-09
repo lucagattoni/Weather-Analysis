@@ -21,24 +21,38 @@ npm run build        # runs tsc, then vite build
 ```
 
 `npm run build` type-checks before it bundles, so the interfaces below are
-enforced rather than promised. Production bundle: **562 kB, 190 kB gzipped**
+enforced rather than promised. Production bundle: **547 kB, 186 kB gzipped**
 (the full ECharts package is 1.11 MB, 368 kB gzipped; only the line chart, grid,
-tooltip, legend, dataZoom and canvas renderer are registered).
+tooltip, dataZoom and canvas renderer are registered).
 
 ## What it does
 
-- **Years** is a two-knob slider over 1946 to 2026. Beside it, a dropdown adds a
-  single year from outside the range as a removable chip, so a range and a few
-  outliers can be compared together.
+- **Years** is a strip of one tick per year from 1946 to 2026, most recent on the
+  left. Tap a tick to add that year or to remove it again, or drag across the strip
+  to add a span; a chip removes one year, and `only <year>` drops every year but the
+  most recent one selected. It opens on the current year. The selection is a plain
+  set, so any mixture of runs and single years is expressible and every year in it
+  can be taken out again — except the last one: a selection of no years is not a
+  state the app offers, so the gesture that would empty it does nothing, and the
+  final chip is a plain legend entry with no remove control on it. No gesture needs
+  a modifier key or a hover, so the strip works the same with a finger; where it
+  does not fit it keeps a usable tick width and scrolls, and its ticks grow taller
+  for a coarse pointer. With a keyboard, arrows move the cursor, space toggles the
+  year under it and shift-arrow sweeps a span.
 - **Overlay.** Two or more years share one Jan-to-Dec axis. Each year's colour comes
   from its decade, its shade from its position in the decade over three, and its dash
   from that position modulo three: 2020 to 2022 are one shade solid, dashed and
   dotted, 2023 restarts at solid one shade darker. All three come from the year
   number, never from where it sits in the selection, so widening the range never
   repaints a line that was already on screen.
-- **Legend.** Always shown for two or more years, drawing each year's real line
-  style, and clicking an entry hides that year without deselecting it. Four or fewer
-  years are also labelled at the end of their line.
+- **Legend.** The chip list is the legend: one row centred under the title, above
+  the plot. Each chip draws the year's real line, dash included, because two of the
+  three years sharing a shade differ by nothing else. Clicking a chip removes that
+  year. Four or fewer years are also labelled at the end of their line.
+- **Title.** The variable and the year selection read as one line above the chart.
+  It is HTML rather than canvas, so it wraps on a narrow screen, and the y-axis
+  carries no rotated name: that name cost a 46px gutter, which is 12% of a phone's
+  width spent on one word.
 - **Variable** is a dropdown over the 13 numeric variables. The two SYNOP code
   columns (`ww`, `w`) are categorical and excluded.
 - **Detail** is a slider with eleven positions, one point per hour up to one per
@@ -50,8 +64,8 @@ tooltip, legend, dataZoom and canvas renderer are registered).
   whose last block holds one day would draw a seventh of the rainfall of its
   neighbours and look like a dry week.
 - **Opacity** is a slider on the line alpha, so overlapping lines stay visible. Below
-  about 50% a single line gets genuinely faint against the background. The legend
-  ignores it and stays readable.
+  about 50% a single line gets genuinely faint against the background. The chips are
+  HTML and never fade with it, so they stay readable at any setting.
 - **Zoom and pan.** Scroll over the chart to zoom around the cursor, drag to pan,
   or drag the slider under the chart. Zoom acts on time only, so the fixed
   y-scale that makes years comparable is never rescaled. Reset zoom appears once
@@ -150,7 +164,7 @@ Four layers. Dependencies point one way, and only `src/main.ts` knows all four.
 | `src/chart/adapter.ts` | `ChartAdapter` and `ChartView`, the whole contract | — |
 | `src/chart/echarts.ts` | The only file that imports a chart library, including the wheel and drag handling | any charting library |
 | `src/app/state.ts` | `AppState`, already plural in years and variables | URL-driven state |
-| `src/app/controls.ts` | The only file that reads the DOM | multi-select, range slider |
+| `src/app/controls.ts` | The only file that reads the DOM | multi-select, year strip |
 | `scripts/split_years.py` | Build-time chunking, Python and pandas via uv | another chunk format |
 
 `src/data/synthetic-source.ts` is what keeps the data seam honest: it is a second

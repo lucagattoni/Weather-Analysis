@@ -17,7 +17,7 @@ can be read against a single fixed y-scale.
 
 | # | Question | Decision |
 |---|---|---|
-| 1 | Selecting years | A two-knob slider sets a start and end year. A chip list adds and removes individual years outside that range. |
+| 1 | Selecting years | A two-knob slider sets a start and end year. A chip list adds and removes individual years outside that range. **Superseded 20260909, see §13.** |
 | 2 | X axis | One shared Jan–Dec axis (`xKind: 'dayOfYear'`, the field already present and unused in `ChartAdapter`). |
 | 3 | Day window | The existing day-range slider stays and applies to all overlaid years at once. Zooming to June–August shows that window for every selected year. |
 | 4 | Colour | Hue from the decade; shade from the year's position in the decade divided by three; dash from that position modulo three. |
@@ -239,3 +239,62 @@ approved. What changed while building:
 
 The sequential ramp above 24 years, the historical envelope, small multiples, a
 heatmap view, overlaying two variables, and URL state. Section 10 stands.
+
+## 13. Revised 20260909 — the year control, after using it
+
+Sections 1 to 12 are left as approved and as built. Decision 1 (a two-knob range
+slider, with a chip list only for years outside the range) was reported by the
+user as two bugs, and both came from the same place.
+
+**What was wrong.** A selection held as a range plus a set of extras has two
+kinds of member, and only one of them was a chip. So a single selected year had
+no chip at all, and adding a second year drew a chip for that one only, leaving
+the first with nothing to remove it by. This was not an oversight in the build:
+a range cannot express "1990 to 2000 without 1995", so the years it contributed
+genuinely were not removable, and a chip for them would have been a lie. The two
+knobs were the second bug — at a one-year selection they sit exactly on top of
+each other, and which one a drag picks up is undefined.
+
+**What replaced it.** The selection is a plain set of years. Every selected year
+is a chip and every chip removes. The slider is replaced by a strip of one tick
+per year, most recent on the left:
+
+| Gesture | Effect |
+|---|---|
+| tap a tick | adds that year, or removes it if it is already shown |
+| drag across ticks | adds every year swept, previewed live on the strip |
+| a chip | removes that year |
+| `only <year>` | drops every year but the most recent one selected |
+| arrows / space / shift-arrow | move the cursor / toggle / sweep a span |
+
+The selection can never be empty (user, 20260909): there would be nothing to look
+at and nothing to say where you were. The gesture that would empty it does
+nothing, in the drag preview as well as on release, and the last remaining chip
+is drawn as a plain legend entry with no remove control. That is also why the
+bulk control leaves one year rather than clearing: it names the year it keeps.
+The app opens on the current year, which is partial until December.
+
+No gesture needs a modifier key or a hover, because a phone has neither. Where
+the strip does not fit it keeps a usable tick width and scrolls inside its track,
+and its ticks grow taller for a coarse pointer.
+
+**Alternatives weighed and rejected, kept on record.** Two separate From and To
+sliders, which the user suggested: it fixes the overlapping knobs but not the
+chips, because the selection would still be a range. Keeping the two knobs and
+hit-testing whichever is nearer the pointer: same objection. A tap that replaces
+the selection with one year, with shift-click to add: one gesture fewer for
+browsing, rejected because shift-click and the Add menu it would have kept are
+both unavailable to a finger. A wrapped decade grid for narrow screens: better
+per-target size than a scrolling strip, rejected because it needs a second
+layout and a second set of row labels.
+
+**Carried with it.** Decision 6, the legend, is now the chip list: HTML above the
+plot rather than drawn in the canvas, one row instead of a legend and a set of
+chips naming the same years. Each chip draws the year's real line and dash, which
+was the point of M3. The variable name left the y axis, where rotated it took a
+46px gutter, and joined the year summary in one horizontal title above the chart.
+`TitleComponent` and `LegendComponent` are no longer registered.
+
+**A trap worth recording.** A component that is not registered makes its option
+silently do nothing: the title was configured correctly and simply never drawn
+until `TitleComponent` was added to `echarts.use`. There is no warning.

@@ -67,23 +67,15 @@ async function draw(meta: Meta, state: Readonly<AppState>): Promise<void> {
     return;
   }
 
-  // Removing the last chip is allowed, so an empty selection is a state the app
-  // has to draw: an empty chart on the right axes, not the previous years left
-  // on screen with nothing in the controls to explain them.
   const axes = axesFor(variables);
   const named = axes.map((a) => a.label).join(' · ');
   const allYears = meta.years.map((y) => y.year);
 
+  // The controls never let the selection empty, so this is a broken state rather
+  // than one to draw a chart for.
   if (years.length === 0) {
-    adapter.render({
-      xKind: 'dayOfYear',
-      xRange: canonicalRange(),
-      yAxes: axes,
-      series: [],
-      lineOpacity,
-    });
     name(named);
-    say('No years shown. Click a year on the strip above, or pick one from Add.');
+    say('No years selected.');
     return;
   }
 
@@ -138,9 +130,9 @@ async function start(): Promise<void> {
   say('Loading…');
   const meta = await source.meta();
 
-  // Default to the most recent complete year, so the first chart is a full one.
-  const complete = meta.years.filter((y) => y.hours >= 8760);
-  const defaultYear = (complete.at(-1) ?? meta.years[meta.years.length - 1]).year;
+  // The current year: the most recent the archive holds. It is a partial year
+  // until December, and the chip beside the chart says so.
+  const defaultYear = meta.years[meta.years.length - 1].year;
   const defaultVariable = meta.variables.some((v) => v.key === 'temp')
     ? 'temp'
     : meta.variables[0].key;

@@ -125,39 +125,35 @@ export function mountControls(meta: Meta, store: Store): void {
   const paintChips = (set: ReadonlySet<number>) => {
     const mode = themeMode();
     const list = sorted(set);
+    const only = list.length === 1;
     const nodes: Node[] = list.map((year) => {
       const style = styleForYear(year, mode);
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.title = `Remove ${year}`;
+      // The last year standing is a legend entry and nothing more: a remove
+      // control that refuses to remove would be worse than none.
+      const chip = document.createElement(only ? 'span' : 'button');
       const swatch = document.createElement('span');
       swatch.className = 'swatch';
       swatch.style.borderTopColor = style.color;
       swatch.style.borderTopStyle = style.dash === 'solid' ? 'solid' : style.dash;
-      button.append(swatch, document.createTextNode(label(year)));
-      button.addEventListener('click', () => {
-        selected.delete(year);
-        publishByHand();
-      });
-      return button;
+      chip.append(swatch, document.createTextNode(label(year)));
+      if (chip instanceof HTMLButtonElement) {
+        chip.type = 'button';
+        chip.title = `Remove ${year}`;
+        chip.addEventListener('click', () => commit(withoutYear(year)));
+      }
+      return chip;
     });
     if (list.length > 1) {
-      const clear = document.createElement('button');
-      clear.type = 'button';
-      clear.className = 'clear';
-      clear.title = 'Remove every year';
-      clear.textContent = 'clear';
-      clear.addEventListener('click', () => {
-        selected.clear();
-        publishByHand();
-      });
-      nodes.push(clear);
-    }
-    if (list.length === 0) {
-      const empty = document.createElement('span');
-      empty.className = 'hint';
-      empty.textContent = 'no years shown — tap a year above';
-      nodes.push(empty);
+      // Not "clear", which would empty the selection: it leaves the most recent
+      // year of the selection, and names the year it is going to leave.
+      const keep = list[list.length - 1];
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'clear';
+      button.title = `Remove every year except ${keep}`;
+      button.textContent = `only ${keep}`;
+      button.addEventListener('click', () => commit(new Set([keep])));
+      nodes.push(button);
     }
     chips.replaceChildren(...nodes);
   };
@@ -200,6 +196,25 @@ export function mountControls(meta: Meta, store: Store): void {
     publish();
   };
 
+  /**
+   * The one way a gesture changes the selection. A selection of no years is not
+   * a state the app offers: there would be nothing to look at and nothing to say
+   * where you were, so a gesture that would empty it does nothing instead. Every
+   * removal goes through here, so the rule is stated once.
+   */
+  const commit = (next: ReadonlySet<number>) => {
+    if (next.size === 0) return;
+    selected.clear();
+    for (const y of next) selected.add(y);
+    publishByHand();
+  };
+
+  const withoutYear = (year: number): Set<number> => {
+    const next = new Set(selected);
+    next.delete(year);
+    return next;
+  };
+
   // The tick under a point, found by hit-testing the DOM rather than by dividing
   // the width: the strip scrolls on a narrow screen, and a computed slice would
   // then be measuring against the wrong origin.
@@ -221,8 +236,11 @@ export function mountControls(meta: Meta, store: Store): void {
     const set = new Set(selected);
     if (dragAnchor === null) return set;
     if (dragCurrent === null || dragCurrent === dragAnchor) {
-      if (set.has(dragAnchor)) set.delete(dragAnchor);
-      else set.add(dragAnchor);
+      if (!set.has(dragAnchor)) set.add(dragAnchor);
+      // Taking the last year off would leave nothing to look at, so the tap
+      // does nothing. Checked here as well as in `commit` so that the live
+      // preview shows what will actually happen.
+      else if (set.size > 1) set.delete(dragAnchor);
       return set;
     }
     for (const year of spanBetween(dragAnchor, dragCurrent)) set.add(year);
@@ -268,9 +286,7 @@ export function mountControls(meta: Meta, store: Store): void {
     if (dragAnchor === null) return;
     const result = dragResult();
     endDrag(event.pointerId);
-    selected.clear();
-    for (const year of result) selected.add(year);
-    publishByHand();
+    commit(result);
   });
 
   // A touch that turns into a scroll, or a pointer the browser takes away.
@@ -293,21 +309,24 @@ export function mountControls(meta: Meta, store: Store): void {
       case 'Home': next = years.length - 1; break;
       case 'End': next = 0; break;
       case ' ':
-      case 'Enter':
+      case 'Enter': {
         event.preventDefault();
-        if (selected.has(cursor)) selected.delete(cursor);
-        else selected.add(cursor);
+        const toggled = selected.has(cursor)
+          ? withoutYear(cursor)
+          : new Set(selected).add(cursor);
         keyAnchor = cursor;
-        publishByHand();
+        commit(toggled);
         return;
+      }
       default:
         return;
     }
     event.preventDefault();
     cursor = years[Math.min(years.length - 1, Math.max(0, next))];
-    if (event.shiftKey) for (const year of spanBetween(keyAnchor, cursor)) selected.add(year);
+    const swept = new Set(selected);
+    if (event.shiftKey) for (const year of spanBetween(keyAnchor, cursor)) swept.add(year);
     else keyAnchor = cursor;
-    publishByHand();
+    commit(swept);
     keepVisible(cursor);
   });
 
