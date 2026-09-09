@@ -339,6 +339,10 @@ export function mountControls(meta: Meta, store: Store): void {
       case ' ':
       case 'Enter': {
         event.preventDefault();
+        // Holding the key down auto-repeats, and each repeat would toggle again:
+        // the year's fate would come down to how long the key was held. One
+        // press, one toggle.
+        if (event.repeat) return;
         const toggled = selected.has(cursor)
           ? withoutYear(cursor)
           : new Set(selected).add(cursor);
@@ -351,10 +355,17 @@ export function mountControls(meta: Meta, store: Store): void {
     }
     event.preventDefault();
     cursor = years[Math.min(years.length - 1, Math.max(0, next))];
-    const swept = new Set(selected);
-    if (event.shiftKey) for (const year of spanBetween(keyAnchor, cursor)) swept.add(year);
-    else keyAnchor = cursor;
-    commit(swept);
+    if (event.shiftKey) {
+      const swept = new Set(selected);
+      for (const year of spanBetween(keyAnchor, cursor)) swept.add(year);
+      commit(swept);
+    } else {
+      // Moving the cursor selects nothing. Painting the strip moves the ring;
+      // going through `commit` would rebuild every chip and write the same year
+      // list to the store on each arrow press.
+      keyAnchor = cursor;
+      paintStrip(selected);
+    }
     keepVisible(cursor);
   });
 
