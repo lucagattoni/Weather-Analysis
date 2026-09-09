@@ -75,6 +75,14 @@ export function mountControls(meta: Meta, store: Store): void {
   /** The year the keyboard is on, and the year a shift-arrow sweeps from. */
   let cursor = [...selected].sort((a, b) => a - b)[0];
   let keyAnchor = cursor;
+  /**
+   * What was selected when the current shift-arrow sweep began, or null between
+   * sweeps. A sweep is recomputed from this every keypress rather than added to
+   * what the last keypress committed, which is what lets it shrink again when
+   * the arrows turn back towards the anchor. A drag already behaves this way,
+   * because it does not commit until release.
+   */
+  let sweepBase: Set<number> | null = null;
 
   const ticks = years.map((year) => {
     const el = document.createElement('span');
@@ -150,6 +158,7 @@ export function mountControls(meta: Meta, store: Store): void {
       // The last year standing is a legend entry and nothing more: a remove
       // control that refuses to remove would be worse than none.
       const chip = document.createElement(only ? 'span' : 'button');
+      chip.className = 'chip';
       const swatch = document.createElement('span');
       swatch.className = 'swatch';
       swatch.style.borderTopColor = style.color;
@@ -168,7 +177,7 @@ export function mountControls(meta: Meta, store: Store): void {
       const keep = list[list.length - 1];
       const button = document.createElement('button');
       button.type = 'button';
-      button.className = 'clear';
+      button.className = 'chip clear';
       button.title = `Remove every year except ${keep}`;
       button.textContent = `only ${keep}`;
       button.addEventListener('click', () => commit(new Set([keep])));
@@ -297,6 +306,7 @@ export function mountControls(meta: Meta, store: Store): void {
     dragAnchor = year;
     dragCurrent = year;
     dragPointer = event.pointerId;
+    sweepBase = null;
     cursor = year;
     keyAnchor = year;
     preview(dragResult());
@@ -330,7 +340,10 @@ export function mountControls(meta: Meta, store: Store): void {
   });
 
   strip.addEventListener('pointerup', (event) => {
-    if (notOurs(event)) return;
+    // Only the release of the button that started the drag ends it. Tapping a
+    // secondary button mid-drag raises its own pointerup, which used to commit
+    // the sweep and end the gesture with the primary button still down.
+    if (event.button !== 0 || notOurs(event)) return;
     const result = dragResult();
     endDrag(event.pointerId);
     commit(result);
@@ -349,8 +362,13 @@ export function mountControls(meta: Meta, store: Store): void {
     let next = i;
     // The strip runs most-recent-first, so left is later and right is earlier.
     switch (event.key) {
-      case 'ArrowLeft': next = i + 1; break;
-      case 'ArrowRight': next = i - 1; break;
+      // Up and Down do what Left and Right do. The list is horizontal, but a
+      // reader told "listbox" reaches for the vertical arrows first, and a key
+      // that does nothing reads as a broken control.
+      case 'ArrowLeft':
+      case 'ArrowUp': next = i + 1; break;
+      case 'ArrowRight':
+      case 'ArrowDown': next = i - 1; break;
       case 'PageDown': next = i - 10; break;
       case 'PageUp': next = i + 10; break;
       case 'Home': next = years.length - 1; break;
@@ -366,6 +384,7 @@ export function mountControls(meta: Meta, store: Store): void {
           ? withoutYear(cursor)
           : new Set(selected).add(cursor);
         keyAnchor = cursor;
+        sweepBase = null;
         commit(toggled);
         return;
       }
@@ -375,7 +394,8 @@ export function mountControls(meta: Meta, store: Store): void {
     event.preventDefault();
     cursor = years[Math.min(years.length - 1, Math.max(0, next))];
     if (event.shiftKey) {
-      const swept = new Set(selected);
+      sweepBase ??= new Set(selected);
+      const swept = new Set(sweepBase);
       for (const year of spanBetween(keyAnchor, cursor)) swept.add(year);
       commit(swept);
     } else {
@@ -383,6 +403,7 @@ export function mountControls(meta: Meta, store: Store): void {
       // going through `commit` would rebuild every chip and write the same year
       // list to the store on each arrow press.
       keyAnchor = cursor;
+      sweepBase = null;
       paintStrip(selected);
     }
     keepVisible(cursor);
