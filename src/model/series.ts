@@ -144,3 +144,21 @@ export function yearRange(years: readonly number[]): [number, number] {
   const last = Math.max(...years);
   return [Date.UTC(first, 0, 1), Date.UTC(last + 1, 0, 1)];
 }
+
+/**
+ * How a year selection reads: "2025", "1990–1995 · 6 years", or, when the
+ * selection has holes in it, "4 years · 1946–2025". `all` is every year the data
+ * holds, which is what makes a run contiguous even where the archive itself has
+ * a gap.
+ */
+export function describeYears(selected: readonly number[], all: readonly number[]): string {
+  if (selected.length === 0) return 'none';
+  const list = [...selected].sort((a, b) => a - b);
+  if (list.length === 1) return String(list[0]);
+  const lo = list[0];
+  const hi = list[list.length - 1];
+  const between = all.filter((y) => y >= lo && y <= hi).length;
+  return between === list.length
+    ? `${lo}–${hi} · ${list.length} years`
+    : `${list.length} years · ${lo}–${hi}`;
+}

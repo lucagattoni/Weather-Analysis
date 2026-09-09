@@ -8,7 +8,7 @@ import { EChartsAdapter } from './chart/echarts.ts';
 import { JsonYearSource } from './data/json-year-source.ts';
 import type { DataSource } from './data/source.ts';
 import type { Meta, VariableMeta, YearData } from './data/types.ts';
-import { buildSeries, canonicalRange, yearRange } from './model/series.ts';
+import { buildSeries, canonicalRange, describeYears, yearRange } from './model/series.ts';
 import { axesFor } from './model/scales.ts';
 import { describeCadence } from './model/resample.ts';
 import { styleSeries } from './model/style.ts';
@@ -52,17 +52,31 @@ async function draw(meta: Meta, state: Readonly<AppState>): Promise<void> {
   const request = (latestRequest += 1);
   const { years, variables: variableKeys, xRange, stepHours, lineOpacity } = state;
 
-  if (years.length === 0) {
-    say('That year is not in the data. Pick one between '
-      + `${meta.years[0].year} and ${meta.years[meta.years.length - 1].year}.`);
-    return;
-  }
-
   const variables = variableKeys
     .map((key) => meta.variables.find((v) => v.key === key))
     .filter((v): v is VariableMeta => v !== undefined);
   if (variables.length === 0) {
     say('Unknown variable.');
+    return;
+  }
+
+  // Removing the last chip is allowed, so an empty selection is a state the app
+  // has to draw: an empty chart on the right axes, not the previous years left
+  // on screen with nothing in the controls to explain them.
+  const axes = axesFor(variables);
+  const named = axes.map((a) => a.label).join(' · ');
+  const allYears = meta.years.map((y) => y.year);
+
+  if (years.length === 0) {
+    adapter.render({
+      xKind: 'dayOfYear',
+      xRange: canonicalRange(),
+      yAxes: axes,
+      series: [],
+      lineOpacity,
+      title: named,
+    });
+    say('No years shown. Click a year on the strip above, or pick one from Add.');
     return;
   }
 
@@ -86,13 +100,15 @@ async function draw(meta: Meta, state: Readonly<AppState>): Promise<void> {
     buildSeries(loaded, years, variables, stepHours, xKind),
     themeMode(),
   );
+  const which = describeYears(years, allYears);
   adapter.render({
     xKind,
     xRange: xRangeFull,
     xWindow: xRange && (xKind === 'dayOfYear' ? xRange : toDisplay(xRange, years[0])),
-    yAxes: axesFor(variables),
+    yAxes: axes,
     series,
     lineOpacity,
+    title: `${named} · ${which}`,
   });
 
   const gaps = series.reduce(
@@ -102,9 +118,6 @@ async function draw(meta: Meta, state: Readonly<AppState>): Promise<void> {
   const points = series.reduce((total, s) => total + s.y.length, 0);
   // A cadence, not "means": rain and sunshine are summed rather than averaged.
   const detail = describeCadence(stepHours);
-  const which = years.length === 1
-    ? String(years[0])
-    : `${years.length} years, ${Math.min(...years)}–${Math.max(...years)}`;
   say(
     `${which}: ${points.toLocaleString('en-GB')} points, ${detail}`
     + (gaps ? `, ${gaps.toLocaleString('en-GB')} shown as gaps` : '')

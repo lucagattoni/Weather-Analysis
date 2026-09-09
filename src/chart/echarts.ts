@@ -6,6 +6,7 @@ import {
   DataZoomComponent,
   GridComponent,
   LegendComponent,
+  TitleComponent,
   TooltipComponent,
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
@@ -18,6 +19,7 @@ import type { Axis, ChartAdapter, ChartView, Series } from './adapter.ts';
 echarts.use([
   LineChart,
   GridComponent,
+  TitleComponent,
   TooltipComponent,
   LegendComponent,
   DataZoomComponent,
@@ -67,13 +69,15 @@ function toPairs(series: Series): Array<[number, number | null]> {
   return pairs;
 }
 
+const TITLE_SIZE = 15;
+
 function yAxisOption(axis: Axis, muted: string) {
   return {
     type: 'value' as const,
-    name: axis.label,
-    nameLocation: 'middle' as const,
-    nameGap: 46,
-    nameTextStyle: { color: muted },
+    // No `name`: the variable is named once, horizontally, in the chart title.
+    // Rotated down the left edge it needed a 46 px gutter of its own, which is
+    // 12% of a phone's width spent on one word.
+    name: undefined,
     min: axis.range[0],
     max: axis.range[1],
     position: axis.side,
@@ -232,6 +236,12 @@ export class EChartsAdapter implements ChartAdapter {
     const window_ = view.xWindow ?? view.xRange;
     this.#applied = [window_[0], window_[1]];
 
+    // The title names the variable and the years; the app composed the words.
+    const title = view.title ?? view.yAxes.map((a) => a.label).join(' · ');
+    // A title wider than the chart would run off both edges rather than one, so
+    // it is cut to fit instead. Only a phone plus a long variable reaches this.
+    const titleRoom = Math.max(120, this.#container.clientWidth - 16);
+
     const axisIndex = new Map(view.yAxes.map((a, i) => [a.scale, i]));
     const decimalsFor = new Map(view.yAxes.map((a) => [a.scale, a.decimals]));
     // ECharts identifies a series by name, so the tooltip looks up unit and
@@ -244,19 +254,38 @@ export class EChartsAdapter implements ChartAdapter {
       {
         useUTC: true,
         animation: false,
+        // `containLabel` reserves exactly what the tick labels need instead of a
+        // fixed gutter, so the plot keeps the full width on a narrow screen and
+        // still fits a four-digit pressure. The top leaves a line for the axis
+        // name, which now sits there rather than down the left edge.
         grid: {
-          left: 76,
-          right: multi ? 64 : 32,
-          top: multi ? 46 : 28,
+          left: 4,
+          right: multi ? 56 : 10,
+          top: multi ? 52 : 30,
           bottom: 92,
-          containLabel: false,
+          containLabel: true,
+        },
+        // What is plotted, centred across the top of the chart, with the legend
+        // under it. Horizontal, so it costs height rather than the width a
+        // rotated axis name used to take out of the plot.
+        title: {
+          text: title,
+          left: 'center' as const,
+          top: 0,
+          textStyle: {
+            color: ink,
+            fontSize: TITLE_SIZE,
+            fontWeight: 600 as const,
+            width: titleRoom,
+            overflow: 'truncate' as const,
+          },
         },
         // Identity is never colour alone: the legend renders each year's real
         // line style, and a small selection is labelled at the line's end too.
         legend: {
           show: multi,
           type: 'scroll' as const,
-          top: 0,
+          top: 26,
           // No `icon`: ECharts then draws each entry as the series' own line,
           // which is what carries the dash pattern. Naming an icon (including
           // the non-existent 'line') replaces that with a shape and loses it.
