@@ -275,6 +275,15 @@ export function mountControls(meta: Meta, store: Store): void {
 
   strip.addEventListener('pointermove', (event) => {
     if (dragAnchor === null) return;
+    // The button is no longer down, so the release happened somewhere this
+    // element never heard about: capture was refused, or the window lost it.
+    // Without this the preview would follow the pointer for ever.
+    if (event.buttons === 0) {
+      const result = dragResult();
+      endDrag(event.pointerId);
+      commit(result);
+      return;
+    }
     const year = yearUnder(event.clientX, event.clientY);
     if (year === null || year === dragCurrent) return;
     dragCurrent = year;
