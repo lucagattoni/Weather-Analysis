@@ -1,0 +1,5 @@
+count,trend with step (per decade),trend p,step at 1993,step p,step CI low,step CI high
+frost days (Tmin < 0),-2.45352,0.01680,18.86615,0.00015,9.44432,28.28799
+ice days (Tmax < 0),-0.04062,0.72456,0.26665,0.62375,-0.81140,1.34469
+warm days (Tmax >= 20),2.60637,0.01139,-3.16504,0.50616,-12.60033,6.27024
+summer days (Tmax >= 25),0.22613,0.07821,-0.07119,0.90542,-1.26031,1.11793

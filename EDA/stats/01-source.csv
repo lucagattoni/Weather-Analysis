@@ -1,6 +1,6 @@
 field,value
-source file,dublin_airport-meteo-1946-2026-data.csv
-sha256,7d8677d9fc947dfbf3fc5ebe7fb9e0239e4f2e48bf93800c5d8777d4a4a1f106
+source file,dublin_airport-meteo-1946-2026-data.csv.gz
+sha256,63d2b9764afb53a0611d6759b427c46e5afa25afd4226c82781e8ff15620084b
 rows,"706,369"
 columns,21
 first observation (UTC),1946-01-01 00:00:00

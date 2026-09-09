@@ -63,7 +63,10 @@ from eda_common import (  # noqa: E402
 REPO = Path(__file__).resolve().parents[2]
 FIGURES = REPO / "EDA" / "figures"
 STATS = REPO / "EDA" / "stats"
-DEFAULT_CSV = REPO / "data" / "dublin_airport-meteo-1946-2026-data.csv"
+# The gzipped CSV is the committed artefact; the uncompressed one is
+# git-ignored, so this default is the file a fresh clone actually has.
+# pandas decompresses by extension, so no separate step is needed.
+DEFAULT_CSV = REPO / "data" / "dublin_airport-meteo-1946-2026-data.csv.gz"
 
 # A run of identical hourly values longer than this is physically implausible
 # for the variable and is reported as a suspected stuck sensor or an outage
@@ -905,11 +908,138 @@ def run_review(csv_path: Path) -> None:
 
 
 # --------------------------------------------------------------------------
+# Sections 2 and 3 - temperature and precipitation
+# --------------------------------------------------------------------------
+
+def run_temperature(csv_path: Path) -> None:
+    import eda_climate as ec
+
+    print(f"reading {csv_path}")
+    cleaned = clean(load_raw(csv_path))
+    frames = ec.temperature_frames(cleaned)
+    ann = frames["annual"]
+    day = frames["day"]
+
+    print("computing tables")
+    trends = ec.table_temperature_trends(frames)
+    breaks = ec.break_test(ann, "degC")
+    # The break test is run on every derived temperature series, not only the
+    # mean: the review's register flagged temperature as ambiguous, and the
+    # ambiguity turns out to live in the daily minimum rather than the mean.
+    break_all = pd.DataFrame([
+        {"series": name, **ec.step_trend_model(s)}
+        for name, s in [
+            ("Annual mean", ann),
+            ("Mean of daily maxima", frames["annual_max"]),
+            ("Mean of daily minima", frames["annual_min"]),
+            ("Diurnal temperature range",
+             frames["annual_max"] - frames["annual_min"]),
+        ]
+    ]).set_index("series")
+    decades = ec.decade_table(ann, "degC")
+    thresholds = ec.table_temperature_thresholds(day)
+    extremes = ec.table_temperature_extremes(cleaned, day)
+    shift = ec.table_distribution_shift(day)
+    anomalies = pd.DataFrame({
+        "annual mean (degC)": ann.loc[1946:LAST_COMPLETE_YEAR],
+        f"anomaly vs {ec.BASELINE[0]}-{ec.BASELINE[1]} (degC)":
+            ec.anomaly(ann).loc[1946:LAST_COMPLETE_YEAR],
+    })
+    anomalies.index.name = "year"
+
+    save_table(trends, STATS / "02-trends.csv", float_format="%.5f")
+    save_table(breaks, STATS / "02-break-test.csv", float_format="%.5f")
+    save_table(break_all, STATS / "02-break-test-all-series.csv", float_format="%.5f")
+    # Threshold counts inherit whatever discontinuity their input carries. The
+    # frost-day count is built on the daily minimum, so if the minimum has a
+    # step then so does the count, and a naive reading would report rising
+    # frost in a warming climate. Each count is tested the same way.
+    break_thresholds = pd.DataFrame([
+        {"count": col, **ec.step_trend_model(thresholds[col])}
+        for col in thresholds.columns
+    ]).set_index("count")
+    save_table(break_thresholds, STATS / "02-break-test-thresholds.csv",
+               float_format="%.5f")
+    save_table(decades, STATS / "02-decades.csv", float_format="%.4f")
+    save_table(thresholds, STATS / "02-thresholds.csv", float_format="%.1f")
+    save_table(extremes, STATS / "02-extremes.csv", float_format="%.3f")
+    save_table(shift, STATS / "02-distribution-shift.csv", float_format="%.4f")
+    save_table(anomalies, STATS / "02-annual-anomaly.csv", float_format="%.4f")
+
+    print("drawing figures")
+    ec.fig_anomaly_bars(ann, "degC",
+                        "Annual mean temperature against the 1961-1990 baseline",
+                        Path("02-annual-anomaly.png"), FIGURES)
+    ec.fig_break_test(ann, "degC",
+                      "Does the September 1993 break drive the temperature trend?",
+                      Path("02-break-test.png"), FIGURES)
+    ec.fig_seasonal_trends(day, "mean", "degC", "Temperature trend by season",
+                           Path("02-seasonal-trends.png"), FIGURES)
+    ec.fig_temperature_thresholds(thresholds, FIGURES)
+    ec.fig_distribution_shift(day, FIGURES)
+    ec.fig_step_diagnosis(frames, FIGURES)
+    print(f"  tables -> {STATS}\n  figures -> {FIGURES}")
+
+
+def run_precipitation(csv_path: Path) -> None:
+    import eda_climate as ec
+
+    print(f"reading {csv_path}")
+    cleaned = clean(load_raw(csv_path))
+    frames = ec.precipitation_frames(cleaned)
+    ann = frames["annual"]
+    day = frames["day"]
+
+    print("computing tables")
+    trends = ec.table_precipitation_trends(cleaned, frames)
+    indices_early = ec.table_precipitation_indices(day)
+    # The percentile indices measure whether rain arrives in heavier bursts,
+    # which an annual total cannot see, so they get the same trend treatment as
+    # everything else rather than only an era-to-era comparison.
+    extra = [c for c in indices_early.columns if c.startswith(("R95p", "R99p"))]
+    trends = pd.concat([trends, pd.DataFrame([
+        ec.trend_row(c, ec._trend_of(indices_early[c]), "mm") for c in extra
+    ]).set_index("series")])
+    breaks = ec.break_test(ann, "mm")
+    decades = ec.decade_table(ann, "mm")
+    indices = indices_early
+    extremes = ec.table_precipitation_extremes(cleaned, day)
+    monthly = ec.table_monthly_shift(cleaned)
+    anomalies = pd.DataFrame({
+        "annual total (mm)": ann.loc[1946:LAST_COMPLETE_YEAR],
+        f"anomaly vs {ec.BASELINE[0]}-{ec.BASELINE[1]} (mm)":
+            ec.anomaly(ann).loc[1946:LAST_COMPLETE_YEAR],
+    })
+    anomalies.index.name = "year"
+
+    save_table(trends, STATS / "03-trends.csv", float_format="%.5f")
+    save_table(breaks, STATS / "03-break-test.csv", float_format="%.5f")
+    save_table(decades, STATS / "03-decades.csv", float_format="%.3f")
+    save_table(indices, STATS / "03-indices.csv", float_format="%.3f")
+    save_table(extremes, STATS / "03-extremes.csv", float_format="%.3f")
+    save_table(monthly, STATS / "03-monthly-shift.csv", float_format="%.3f")
+    save_table(anomalies, STATS / "03-annual-anomaly.csv", float_format="%.3f")
+
+    print("drawing figures")
+    ec.fig_anomaly_bars(ann, "mm",
+                        "Annual rainfall total against the 1961-1990 baseline",
+                        Path("03-annual-anomaly.png"), FIGURES)
+    ec.fig_break_test(ann, "mm",
+                      "Does the September 1993 break drive the rainfall trend?",
+                      Path("03-break-test.png"), FIGURES)
+    ec.fig_seasonal_trends(day, "sum", "mm", "Rainfall trend by season",
+                           Path("03-seasonal-trends.png"), FIGURES)
+    ec.fig_precipitation_indices(indices, FIGURES)
+    ec.fig_monthly_shift(monthly, FIGURES)
+    print(f"  tables -> {STATS}\n  figures -> {FIGURES}")
+
+
+# --------------------------------------------------------------------------
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--csv", type=Path, default=DEFAULT_CSV,
-                        help="source hourly CSV (gzip accepted)")
+                        help="source hourly CSV; .gz is decompressed automatically")
     parser.add_argument("--section", default="review",
                         choices=["review", "temperature", "precipitation", "all"])
     args = parser.parse_args()
@@ -923,9 +1053,9 @@ def main() -> int:
     if args.section in ("review", "all"):
         run_review(args.csv)
     if args.section in ("temperature", "all"):
-        print("temperature section: not built yet")
+        run_temperature(args.csv)
     if args.section in ("precipitation", "all"):
-        print("precipitation section: not built yet")
+        run_precipitation(args.csv)
     return 0
 
 

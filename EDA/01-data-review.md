@@ -42,8 +42,8 @@ The rest of this document is the evidence for those claims.
 | Station | Dublin Airport, 53.428 N, -6.241 E, 71 m |
 | Period | 1946-01-01 00:00 to 2026-08-01 00:00 UTC |
 | Rows | 706,369 |
-| Source file | `data/dublin_airport-meteo-1946-2026-data.csv` |
-| SHA-256 | `7d8677d9fc947dfbf3fc5ebe7fb9e0239e4f2e48bf93800c5d8777d4a4a1f106` |
+| Source file | `data/dublin_airport-meteo-1946-2026-data.csv.gz` |
+| SHA-256 | `63d2b9764afb53a0611d6759b427c46e5afa25afd4226c82781e8ff15620084b` |
 | Licence | Met Éireann, CC BY 4.0 |
 
 Timestamps are UTC, so the diurnal cycle in [section 8](#8-diurnal-cycle) is in
@@ -358,7 +358,8 @@ register a brief weak beam that a Campbell-Stokes card would not have burned.
 quoted as a trend.**
 
 Machine-readable: `EDA/stats/01-suspect-runs.csv`,
-`EDA/stats/01-zero-sun-verified.csv`, `EDA/stats/01-zero-sun-by-decade.csv`.
+`EDA/stats/01-zero-sun-spells.csv`, `EDA/stats/01-zero-sun-verified.csv`,
+`EDA/stats/01-zero-sun-by-decade.csv`.
 
 ## 6. Univariate summary
 

@@ -508,19 +508,3 @@ def file_digest(path: Path) -> str:
         for block in iter(lambda: fh.read(1 << 20), b""):
             h.update(block)
     return h.hexdigest()
-
-
-def markdown_table(df: pd.DataFrame, floatfmt: str = "{:.2f}") -> str:
-    """Render a frame as a GitHub markdown table, for pasting into a document."""
-    def cell(v: object) -> str:
-        if isinstance(v, float):
-            return "-" if np.isnan(v) else floatfmt.format(v)
-        return str(v)
-
-    header = "| " + " | ".join([df.index.name or ""] + [str(c) for c in df.columns]) + " |"
-    rule = "|" + "---|" * (len(df.columns) + 1)
-    rows = [
-        "| " + " | ".join([str(idx)] + [cell(v) for v in row]) + " |"
-        for idx, row in zip(df.index, df.to_numpy())
-    ]
-    return "\n".join([header, rule, *rows])

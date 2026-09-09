@@ -1,0 +1,23 @@
+kind,rank,when,value (degC),anomaly (degC)
+warmest year,1,2023,10.743,1.188
+warmest year,2,2025,10.670,1.115
+warmest year,3,1989,10.639,1.084
+warmest year,4,1990,10.468,0.913
+warmest year,5,2022,10.422,0.867
+coldest year,1,2010,8.451,-1.104
+coldest year,2,1951,8.764,-0.791
+coldest year,3,1963,8.774,-0.781
+coldest year,4,1986,8.830,-0.725
+coldest year,5,1962,8.860,-0.695
+warmest month,1,March 1957,9.208,3.019
+warmest month,2,April 2007,10.746,2.941
+warmest month,3,February 1998,7.906,2.916
+warmest month,4,November 2011,10.014,2.882
+warmest month,5,December 2015,8.741,2.742
+coldest month,1,December 2010,0.327,-5.673
+coldest month,2,February 1947,0.364,-4.627
+coldest month,3,January 1963,1.079,-4.052
+coldest month,4,December 1950,2.162,-3.838
+coldest month,5,February 1986,1.671,-3.320
+highest hourly reading,1,2022-07-18 12:00:00,29.100,
+lowest hourly reading,1,2010-12-25 19:00:00,-11.500,

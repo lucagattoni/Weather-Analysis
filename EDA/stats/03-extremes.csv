@@ -1,0 +1,26 @@
+kind,rank,when,value (mm),anomaly (mm)
+wettest year,1,2002,1095.400,362.650
+wettest year,2,1960,1034.300,301.550
+wettest year,3,1958,1033.900,301.150
+wettest year,4,1966,1020.900,288.150
+wettest year,5,2023,1001.500,268.750
+driest year,1,1989,555.100,-177.650
+driest year,2,1953,580.600,-152.150
+driest year,3,1975,583.700,-149.050
+driest year,4,1971,591.600,-141.150
+driest year,5,1949,598.300,-134.450
+wettest month,1,December 1978,217.000,
+wettest month,2,December 2015,193.500,
+wettest month,3,August 2008,189.900,
+wettest month,4,November 2002,185.800,
+wettest month,5,November 1965,182.300,
+wettest day,1,1993-06-11,92.400,
+wettest day,2,2014-08-02,79.600,
+wettest day,3,2008-08-09,76.100,
+wettest day,4,2002-11-14,74.600,
+wettest day,5,2011-10-24,69.500,
+wettest hour,1,2009-07-02 04:00:00,26.500,
+wettest hour,2,1955-08-21 20:00:00,25.000,
+wettest hour,3,2008-08-09 16:00:00,24.100,
+wettest hour,4,1967-07-14 16:00:00,23.500,
+wettest hour,5,1968-08-16 23:00:00,22.600,
