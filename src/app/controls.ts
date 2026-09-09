@@ -182,10 +182,15 @@ export function mountControls(meta: Meta, store: Store): void {
     paintStrip(set);
   };
 
-  // A year selection is a set of years, and nothing else about it is app state.
-  const publish = () => {
+  /** Both halves of the control, from the committed selection. No store write. */
+  const repaint = () => {
     paintStrip(selected);
     paintChips(selected);
+  };
+
+  // A year selection is a set of years, and nothing else about it is app state.
+  const publish = () => {
+    repaint();
     store.update({ years: sorted(selected) });
   };
 
@@ -373,9 +378,10 @@ export function mountControls(meta: Meta, store: Store): void {
     resetZoom.hidden = state.xRange === undefined;
   });
 
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    preview(selected);
-  });
+  // Both the ticks and the chip swatches carry a year's colour, and the ramps are
+  // chosen per theme. Repainting only the strip left the chips, which are the
+  // chart's legend, showing the previous theme's colours until the next edit.
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', repaint);
 
   publish();
   keepVisible(cursor);
