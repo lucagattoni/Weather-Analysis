@@ -27,7 +27,9 @@ Browser app in TypeScript that visualises the Met Éireann Dublin Airport hourly
 
 ## Runtime and hosting
 
-- Runs directly in the browser, Chrome as reference. Static hosting only, local `npm run dev` now and GitHub Pages later: no backend, relative fetch paths, Vite `base` for deployment.
+- Runs directly in the browser, Chrome as reference. Static hosting only: no backend, and every fetch built from `import.meta.env.BASE_URL`.
+- Live at <https://lucagattoni.github.io/Weather-Analysis/>, deployed by `.github/workflows/pages.yml` on every push to `main`. The sub-path appears only in `vite.config.ts`.
+- **Checking a deploy: HTTP 200 is not proof.** A sub-path build served at the root answers every data request with `index.html`, at 200. Assert content type and byte size, never status alone. This bit once: `vite preview` runs with `command === 'serve'`, so a `base` keyed only on `build` made preview rehearse the wrong site, and `meta.json` and `1990.json` both "passed" at 3,184 bytes each, which is the size of `index.html`.
 
 ## Data
 
