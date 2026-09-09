@@ -236,6 +236,8 @@ export function mountControls(meta: Meta, store: Store): void {
   // the preview show exactly what will be committed.
   let dragAnchor: number | null = null;
   let dragCurrent: number | null = null;
+  /** Which pointer owns the drag, so a second finger cannot steer it. */
+  let dragPointer: number | null = null;
 
   const dragResult = (): Set<number> => {
     const set = new Set(selected);
@@ -255,17 +257,27 @@ export function mountControls(meta: Meta, store: Store): void {
   const endDrag = (pointerId: number) => {
     dragAnchor = null;
     dragCurrent = null;
+    dragPointer = null;
     if (strip.hasPointerCapture(pointerId)) strip.releasePointerCapture(pointerId);
   };
 
+  /** True for events from any pointer other than the one that started the drag. */
+  const notOurs = (event: PointerEvent) =>
+    dragAnchor === null || event.pointerId !== dragPointer;
+
   strip.addEventListener('pointerdown', (event) => {
     if (event.button !== 0) return;
+    // A drag is already running under another pointer. A palm brushing the strip
+    // mid-sweep used to move the anchor to wherever it landed, so the gesture
+    // committed a span nobody asked for; the second pointer is ignored instead.
+    if (dragAnchor !== null) return;
     const year = yearUnder(event.clientX, event.clientY);
     if (year === null) return;
     event.preventDefault();
     strip.focus({ preventScroll: true });
     dragAnchor = year;
     dragCurrent = year;
+    dragPointer = event.pointerId;
     cursor = year;
     keyAnchor = year;
     preview(dragResult());
@@ -279,11 +291,13 @@ export function mountControls(meta: Meta, store: Store): void {
   });
 
   strip.addEventListener('pointermove', (event) => {
-    if (dragAnchor === null) return;
+    if (notOurs(event)) return;
     // The button is no longer down, so the release happened somewhere this
     // element never heard about: capture was refused, or the window lost it.
-    // Without this the preview would follow the pointer for ever.
-    if (event.buttons === 0) {
+    // Without this the preview would follow the pointer for ever. Mouse only:
+    // `buttons` is what a mouse release reliably reports, and trusting it for a
+    // touch would risk ending a sweep that is still under the finger.
+    if (event.pointerType === 'mouse' && event.buttons === 0) {
       const result = dragResult();
       endDrag(event.pointerId);
       commit(result);
@@ -297,7 +311,7 @@ export function mountControls(meta: Meta, store: Store): void {
   });
 
   strip.addEventListener('pointerup', (event) => {
-    if (dragAnchor === null) return;
+    if (notOurs(event)) return;
     const result = dragResult();
     endDrag(event.pointerId);
     commit(result);
@@ -306,7 +320,7 @@ export function mountControls(meta: Meta, store: Store): void {
   // A touch that turns into a scroll, or a pointer the browser takes away.
   // The committed selection is repainted, so the preview never sticks.
   strip.addEventListener('pointercancel', (event) => {
-    if (dragAnchor === null) return;
+    if (notOurs(event)) return;
     endDrag(event.pointerId);
     publish();
   });
