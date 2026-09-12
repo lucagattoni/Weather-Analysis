@@ -127,10 +127,18 @@ def _daily_temp(clean_df: pd.DataFrame) -> pd.DataFrame:
     return day
 
 
-def _matrix(day: pd.DataFrame, lo: int, hi: int, column: str = "mean") -> pd.DataFrame:
-    """Years down, day-of-year across, for the years in [lo, hi]."""
+def _matrix(day: pd.DataFrame, lo: int, hi: int, column: str = "mean",
+            agg: str = "mean") -> pd.DataFrame:
+    """Years down, day-of-year across, for the years in [lo, hi].
+
+    `agg` is how the two rows a leap year contributes to the 28-February slot
+    combine, and it has to follow the variable's own contract: averaging two
+    daily totals halves the day for rain and sunshine. It reaches three cells
+    in 3,650 and moves nothing this document prints, which is exactly why it
+    would have gone on being wrong.
+    """
     window = day.loc[(day["year"] >= lo) & (day["year"] <= hi)]
-    return window.pivot_table(index="year", columns="doy", values=column, aggfunc="mean")
+    return window.pivot_table(index="year", columns="doy", values=column, aggfunc=agg)
 
 
 def _separation(matrix: pd.DataFrame) -> tuple[float, float]:
@@ -463,7 +471,8 @@ def table_variables(clean_df: pd.DataFrame) -> pd.DataFrame:
         if var_day.empty:
             continue
         var_day["doy"] = _day_of_year(var_day.index)
-        matrix = _matrix(var_day, lo, hi, "mean")
+        matrix = _matrix(var_day, lo, hi, "mean",
+                         "sum" if key in ("rain", "sun") else "mean")
         if matrix.empty or len(matrix.index) < 2:
             continue
         ties = []
@@ -534,7 +543,18 @@ def table_heatmap_signal(day: pd.DataFrame) -> pd.DataFrame:
         # the row. At one cell per day r1 is around 0.7 and the effective count
         # is a fifth of the nominal one, which matters a great deal to the
         # answer.
+        # The noise a row's mean has to beat is the scatter of cells *within*
+        # that row, not the scatter of the whole picture. Total variance splits
+        # as pooled^2 = within^2 + between^2, so using the pooled figure here put
+        # the between-year variation - which is precisely the signal being
+        # detected - into its own denominator. It understated the ratio by 1.8%
+        # at one cell per day and by 22.6% at one per season, because within-row
+        # noise shrinks as cells coarsen while the between-year term does not.
+        # `noise` above stays pooled: the trend question below it really is about
+        # the whole image, since a reader's eye compares cells across all of it.
         year_means = np.nanmean(matrix.to_numpy(), axis=1)
+        within = float(np.nanstd(matrix.to_numpy()
+                                 - np.nanmean(matrix.to_numpy(), axis=1, keepdims=True)))
         r1s = []
         for row in matrix.to_numpy():
             row = row[np.isfinite(row)]
@@ -544,7 +564,7 @@ def table_heatmap_signal(day: pd.DataFrame) -> pd.DataFrame:
         r1 = min(max(r1, 0.0), 0.99)
         n = matrix.shape[1]
         n_eff = max(n * (1.0 - r1) / (1.0 + r1), 3.0)
-        row_noise = noise / np.sqrt(n_eff)
+        row_noise = within / np.sqrt(n_eff)
         rows.append({
             "cell": label,
             "cells_per_year": int(n),
@@ -552,6 +572,7 @@ def table_heatmap_signal(day: pd.DataFrame) -> pd.DataFrame:
             "cell_noise_sd_c": noise,
             "trend_over_cell_noise": signal / noise if noise else float("nan"),
             "year_to_year_sd_c": float(np.nanstd(year_means)),
+            "within_row_sd_c": within,
             "lag1_along_row": r1,
             "effective_cells_per_row": n_eff,
             "row_noise_sd_c": float(row_noise),
@@ -655,7 +676,10 @@ def table_envelope(day: pd.DataFrame) -> pd.DataFrame:
     grey stripe and nothing is distinguishable.
     """
     ref = day.loc[(day["year"] >= NORMALS[0]) & (day["year"] <= NORMALS[1])]
-    grouped = ref.groupby("doy")["mean"]
+    # One value per year per slot before taking percentiles across years, or the
+    # folded 29 February gives doy 59 thirty-eight observations where every
+    # other day has thirty, and weights eight leap years double on that day.
+    grouped = ref.groupby(["year", "doy"])["mean"].mean().groupby("doy")
     band = pd.DataFrame({
         "p10": grouped.quantile(0.10),
         "p50": grouped.quantile(0.50),
@@ -685,7 +709,7 @@ def table_envelope(day: pd.DataFrame) -> pd.DataFrame:
 
 def table_band_width(day: pd.DataFrame) -> pd.DataFrame:
     ref = day.loc[(day["year"] >= NORMALS[0]) & (day["year"] <= NORMALS[1])]
-    grouped = ref.groupby("doy")["mean"]
+    grouped = ref.groupby(["year", "doy"])["mean"].mean().groupby("doy")
     width = (grouped.quantile(0.90) - grouped.quantile(0.10)).dropna()
     return pd.DataFrame([{
         "reference_period": f"{NORMALS[0]}-{NORMALS[1]}",

@@ -1,5 +1,5 @@
-cell,cells_per_year,trend_signal_c,cell_noise_sd_c,trend_over_cell_noise,year_to_year_sd_c,lag1_along_row,effective_cells_per_row,row_noise_sd_c,year_over_row_noise
-1 day,365,0.434,2.496,0.174,0.473,0.677,70.176,0.298,1.587
-1 week,52,0.433,1.782,0.243,0.472,0.314,27.153,0.342,1.379
-1 month,12,0.436,1.132,0.386,0.472,0.100,9.826,0.361,1.308
-1 season,4,0.433,0.816,0.530,0.472,0.000,4.000,0.408,1.158
+cell,cells_per_year,trend_signal_c,cell_noise_sd_c,trend_over_cell_noise,year_to_year_sd_c,within_row_sd_c,lag1_along_row,effective_cells_per_row,row_noise_sd_c,year_over_row_noise
+1 day,365,0.434,2.496,0.174,0.473,2.451,0.677,70.176,0.293,1.616
+1 week,52,0.433,1.782,0.243,0.472,1.718,0.314,27.153,0.330,1.430
+1 month,12,0.436,1.132,0.386,0.472,1.029,0.100,9.826,0.328,1.439
+1 season,4,0.433,0.816,0.530,0.472,0.666,0.000,4.000,0.333,1.420

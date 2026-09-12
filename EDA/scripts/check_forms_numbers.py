@@ -212,8 +212,8 @@ for y, w, h, share in ((4, 600, 260, 25.0), (10, 300, 173, 8.3), (30, 200, 104, 
     eq(f"sm {y} share", sm.loc[y, "panel_area_share_pct"], share, 0.0501)
 
 hs = pd.read_csv(S / "04-heatmap-signal.csv", index_col=0)
-for cell, cells, trend, row in (("1 day", 365, 0.17, 1.59), ("1 week", 52, 0.24, 1.38),
-                                ("1 month", 12, 0.39, 1.31), ("1 season", 4, 0.53, 1.16)):
+for cell, cells, trend, row in (("1 day", 365, 0.17, 1.62), ("1 week", 52, 0.24, 1.43),
+                                ("1 month", 12, 0.39, 1.44), ("1 season", 4, 0.53, 1.42)):
     eq(f"hs {cell} cells", hs.loc[cell, "cells_per_year"], cells, 0.5)
     eq(f"hs {cell} trend/noise", hs.loc[cell, "trend_over_cell_noise"], trend, 0.00501)
     eq(f"hs {cell} year/rownoise", hs.loc[cell, "year_over_row_noise"], row, 0.005)
@@ -275,6 +275,19 @@ says("daily against season row noise, generated from the CSV",
      f'{hs.loc["1 day", "year_over_row_noise"]:.2f} against '
      f'{hs.loc["1 season", "year_over_row_noise"]:.2f}')
 
+for cell in hs.index:
+    r = hs.loc[cell]
+    eq(f"hs {cell} row noise is within-row, not pooled",
+       # 0.01 absorbs the CSV's 3-dp rounding of row_noise_sd_c, which is worth
+       # 0.004 once multiplied back up at the daily row. A pooled-for-within
+       # swap is 0.045 out there and 0.15 at one cell per season, so this
+       # still catches the confusion it exists for.
+       r["row_noise_sd_c"] * (r["effective_cells_per_row"] ** 0.5), r["within_row_sd_c"], 0.01)
+    checks += 1
+    if r["within_row_sd_c"] >= r["cell_noise_sd_c"]:
+        fails.append(f"hs {cell}: within-row noise {r['within_row_sd_c']} is not below "
+                     f"pooled {r['cell_noise_sd_c']}; the two terms have been confused")
+
 eq("axis cost ratio 2.9x",
    ax.iloc[2]["separation_pct_of_axis"] / ax.iloc[0]["separation_pct_of_axis"], 2.9, 0.05)
 says("2.9x in section 2", "2.9 times\nthe plot height")
@@ -305,8 +318,13 @@ says("sm empty slots explained", "leave two slots empty, so each panel gets 8.3%
 # are pairs times the swap rate. Section 1 rests on both.
 for y in (2, 5, 10, 20, 30):
     eq(f"pairs formula n={y}", occ2.loc[y, "pairs_on_screen"], y * (y - 1) / 2, 0.5)
+    # Pairs recomputed from y, not read back from the row: reusing the stored
+    # value compared a cell against two of its own siblings, all three written
+    # from the same two sub-expressions. This still cannot catch a wrong
+    # _swap_rate, which flows identically into every column and agrees with
+    # itself; nothing here reads the source series, so nothing here can.
     eq(f"crossings are pairs x rate n={y}", occ2.loc[y, "expected_crossings_per_point"],
-       occ2.loc[y, "pairs_on_screen"] * occ2.loc[y, "pct_days_pair_swaps_raw"] / 100, 0.01)
+       (y * (y - 1) / 2) * occ2.loc[y, "pct_days_pair_swaps_raw"] / 100, 0.01)
 
 # Subtracting a normal cannot move separation. That identity is the document's
 # proof that the anomaly buys nothing in occlusion, so it is checked, not assumed.

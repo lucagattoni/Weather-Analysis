@@ -273,10 +273,10 @@ to compete with the noise in the cells, and the shift loses:
 
 | Cell | Cells per year | Effective cells per row | Trend ÷ cell noise | One year ÷ row noise |
 |---|---|---|---|---|
-| 1 day | 365 | 70 | 0.17 | 1.59 |
-| 1 week | 52 | 27 | 0.24 | 1.38 |
-| 1 month | 12 | 10 | 0.39 | 1.31 |
-| 1 season | 4 | 4 | 0.53 | 1.16 |
+| 1 day | 365 | 70 | 0.17 | 1.62 |
+| 1 week | 52 | 27 | 0.24 | 1.43 |
+| 1 month | 12 | 10 | 0.39 | 1.44 |
+| 1 season | 4 | 4 | 0.53 | 1.42 |
 
 The left column is the eighty-year shift against the spread of cell values: 0.17
 at one cell per day, rising to 0.53 at one per season. Aggregating helps, and
@@ -298,14 +298,28 @@ autocorrelated, one warm day following another, with a lag-1 of 0.68 at daily
 cells, so a 365-cell row carries the information of about 70 independent ones.
 The correction is this project's own, the same `n_eff = n(1 - r1)/(1 + r1)` that
 `eda_common.fit_trend` applies throughout documents 1 to 3, and it takes the
-daily ratio from 3.6 to **1.59**.
+daily ratio from 3.7 to **1.62**.
+
+The noise in that denominator is the scatter of cells *within* a row, not the
+scatter of the whole picture. Those are different numbers, and using the second
+was a real error here until the eighth review pass: total variance splits as
+pooled² = within² + between², so the pooled figure carries the between-year
+variation that this ratio exists to detect, and putting the signal into its own
+denominator understated the answer. By 1.8% at one cell per day and by 22.6% at
+one per season, because within-row noise falls as cells coarsen and the
+between-year term does not.
 
 The honest claim is therefore narrower than it looked: **a heatmap makes an
 unusual year findable across eighty years of record, but only just, at about 1.6
 times the noise of its own row; and it does not make the slow trend visible at
-all.** The slow trend is what document 2's fitted trends are for. Finer cells are
-still better for spotting a year than coarser ones, 1.59 against 1.16, but by a
-much smaller margin than the uncorrected figure suggested.
+all.** The slow trend is what document 2's fitted trends are for.
+
+Cell size barely moves this: **1.62 against 1.42**, one cell per day against one
+per season, with the two middle sizes between them and above the seasonal one. The
+choice of cell size is close to free on this axis, and what actually costs a
+factor of two is the autocorrelation correction above. An earlier version of this
+paragraph read the other way, that finer cells were clearly better, and that was
+an artefact of the wrong noise term.
 
 ![The same eighty years at two cell sizes](figures/04-heatmap-detail.png)
 
@@ -471,7 +485,7 @@ small multiples serves best. The years you pick are the panels you get.
 **Build the heatmap second, or first if the goal is the whole archive.** It is
 the only candidate that survives past thirty years, where small-multiple panels
 have fallen to 133 × 58 px. Its second advantage is real but thin: an unusual
-year reads as a row at **1.59 times** the noise of that row, once the
+year reads as a row at **1.62 times** the noise of that row, once the
 autocorrelation along the row is accounted for the way this project accounts for
 it everywhere else. That is above 1 and not far above it. The other reason
 previously given for the heatmap, that it alone makes the eighty-year trend
@@ -523,8 +537,16 @@ because it was "the only form on which a +0.43 °C shift across eighty years is
 visible at all". Measuring that claim rather than asserting it showed the shift
 is 0.17 to 0.53 times the cell noise and is not visible at any cell size. The
 heatmap keeps a real and different advantage, finding an unusual year across the
-whole record, though at 1.59 times the row noise rather than the 3.6 an
+whole record, though at 1.62 times the row noise rather than the 3.7 an
 uncorrected count of cells suggested.
+
+A fourth was found in the measurement rather than the prose. The column headed
+"one year divided by row noise" was dividing by the noise of the whole heatmap,
+not of the row, so it carried the between-year signal in its own denominator. The
+figures it produced were too low throughout, worst where the document leaned on
+them least carefully: 1.16 at one cell per season is really 1.42. The headline
+moves from 1.59 to 1.62 and the conclusion is unchanged, but the claim that finer
+cells are clearly better for spotting a year did not survive it.
 
 A third claim of this document's own has since been withdrawn: that small
 multiples is cheaper because it reuses the existing chart. `ChartView` carries
