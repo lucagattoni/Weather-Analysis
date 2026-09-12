@@ -580,7 +580,9 @@ def table_small_multiples(day: pd.DataFrame) -> pd.DataFrame:
     """One small panel per year, which the roadmap already named.
 
     It removes occlusion exactly as the heatmap does, because no two years share
-    a panel, and it reuses the line chart rather than needing a new one. What it
+    a panel. It is not free reuse of the existing line chart: ChartView carries
+    one x-range, one list of y-axes and one list of series, so N panels need a
+    multi-grid shape for that contract or N synchronised instances. What it
     spends instead is panel area, and comparing two years becomes a matter of
     looking from one panel to another rather than at one line against another.
     """
@@ -593,7 +595,10 @@ def table_small_multiples(day: pd.DataFrame) -> pd.DataFrame:
             "grid": f"{cols} x {panel_rows}",
             "panel_width_px": PLOT_WIDTH_PX / cols,
             "panel_height_px": PLOT_HEIGHT_PX / panel_rows,
-            "panel_area_share_pct": 100.0 / count,
+            # The panel's real share of the plot, which is 1/slots and not
+            # 1/count: a grid that does not divide evenly leaves empty slots
+            # and every panel is smaller than 1/N would suggest.
+            "panel_area_share_pct": 100.0 / (cols * panel_rows),
         })
     return pd.DataFrame(rows).set_index("years")
 
@@ -643,7 +648,10 @@ def table_envelope(day: pd.DataFrame) -> pd.DataFrame:
 
     rows = []
     for year in (1963, 1995, 2010, 2018, 2025):
-        this = day.loc[day["year"] == year].set_index("doy")["mean"]
+        # groupby, not set_index: _day_of_year folds 29 February onto 28
+        # February, so a leap year hands this two rows at doy 59 and the
+        # shared slot has to be averaged the way every other path averages it.
+        this = day.loc[day["year"] == year].groupby("doy")["mean"].mean()
         joined = band.join(this.rename("value"), how="inner").dropna(subset=["value"])
         if joined.empty:
             continue

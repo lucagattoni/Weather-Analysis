@@ -18,11 +18,15 @@ uv run EDA/scripts/eda_report.py --section forms
 
 **Where the six come from.** Four were put to the user as the next chart. Two
 more, **small multiples** and **a sequential colour ramp above roughly 24 years**,
-were already on record in
-`plans/20260908_2230-multi-year-comparison-plan.md` §10 and §12 as things
-considered and deferred during the multi-year build. Leaving them out would have
-offered a choice narrower than the one the project had already framed, and small
-multiples in particular turns out to matter.
+were added from `plans/20260908_2230-multi-year-comparison-plan.md` §10 and §12,
+where they sat as things considered and deferred during the multi-year build.
+Leaving them out would have offered a choice narrower than the one the project
+had already framed, and small multiples in particular turns out to matter.
+
+Little of this set is new. That plan's §10 also names **the historical envelope**
+and **a heatmap view**, so four of the six below were already on the project's
+own deferred list; only the anomaly and the cumulative form are introduced here
+for the first time.
 
 Those same plan sections also list **overlaying two variables** and **URL state**.
 Neither is here, deliberately: they are not answers to the question this document
@@ -121,8 +125,8 @@ own README tells people not to use for a wide selection. From
 The rate and the count point opposite ways, and both are true. Coarser steps make
 each remaining point *more* likely to swap, because averaging pulls the years
 toward each other, but there are far fewer points, so the absolute tangle falls
-by a factor of four from daily to weekly. The cost is in the spread column: it
-falls 31% over the same range. **The slider trades tangle for the difference you
+by a factor of four and a half from daily to weekly. The cost is in the spread
+column: it falls 32% over the same range. **The slider trades tangle for the difference you
 came to see.** It helps, it is already built, and it does not remove the problem.
 
 ### It is not a fact about temperature, or about one decade
@@ -152,7 +156,9 @@ nothing, and "which is on top" is then undefined. Dropping those days and
 comparing what is left gives 36.3%; treating a tie as leaving the leader where it
 was gives 29.5%. Both are defensible and the gap is nearly seven points, so the
 rain figure is a range and not the precise fact a single column would imply.
-Every other variable moves by less than 0.2 points between the two.
+Sunshine needs the same care on a smaller scale: 2.4% of its day-pairs are tied,
+the second-largest share in the table, and its two columns sit 1.0 points apart.
+The other five move by less than 0.2 points between them.
 
 ---
 
@@ -172,19 +178,29 @@ Each year plotted as its distance from the 1991-2020 normal for that day. From
 | 20 | 8.85 °C | 30.09 °C | 29.4% | 21.27 °C | 41.6% |
 | 30 | 9.65 °C | 30.09 °C | 32.1% | 21.27 °C | 45.4% |
 
-Against the app's own fixed 45 °C axis the gain is larger: 16.0% to 46.2% at ten
-years, which is 2.9 times the plot height for the same difference.
+Separation is one column and not two because subtracting a normal cannot change
+it: the same number comes off every year on a given day, so the gap between the
+highest year and the lowest is untouched. What the anomaly buys is a narrower
+axis to draw that gap on. Against the app's own fixed 45 °C axis ten years fill
+16.0%; on the 15.64 °C axis an anomaly needs, they fill 46.2%, which is 2.9 times
+the plot height for the same difference.
 
 ![Separation as a share of the axis each form needs](figures/04-separation.png)
 
-**Buys:** the largest resolution gain here, at every year count, and by a wide
-margin the cheapest to build: a build-time day-of-year normal in `meta.json` and
-a subtraction in the model. No new chart type, no adapter change, and zoom,
-detail and opacity keep working untouched.
+**Buys:** the largest resolution gain here, at every year count, and no new chart
+type: the same lines against the same `Axis` contract, with zoom, detail and
+opacity untouched.
 **Costs:** nothing at all in occlusion, proven above. The top-right panel of the
 figure is ten anomaly lines and it is as tangled as the raw panel beside it. It
 also puts the reader one subtraction from the observation: a line at +3 °C no
-longer says what the temperature was.
+longer says what the temperature was. And it is cheap but not as cheap as an
+earlier draft of this section implied. The 2.9× is entirely the narrower axis, so
+it arrives only if the app can draw that axis, and today it cannot: `meta.json`
+carries one `min` and one `max` per variable, `VariableMeta` has no second range,
+`axisFor` in `src/model/scales.ts` builds the axis from those two fields alone,
+and `AppState` has no field saying which mode is showing. A second precomputed
+range in the data contract and a mode flag threaded through the state layer are
+part of the price, alongside the day-of-year normal and the subtraction.
 **Best at:** two to five years, where few enough pairs exist for the lines to be
 told apart and height is the whole difficulty.
 
@@ -196,16 +212,18 @@ The same line chart repeated, one year per panel, on a shared axis. From
 | Years | Grid | Panel size | Share of the area each year gets |
 |---|---|---|---|
 | 4 | 2 × 2 | 600 × 260 px | 25.0% |
-| 10 | 4 × 3 | 300 × 173 px | 10.0% |
+| 10 | 4 × 3 | 300 × 173 px | 8.3% |
 | 30 | 6 × 5 | 200 × 104 px | 3.3% |
-| 80 | 9 × 9 | 133 × 58 px | 1.3% |
+| 80 | 9 × 9 | 133 × 58 px | 1.2% |
 
 **Buys:** occlusion is gone by construction, exactly as for the heatmap, because
 no two years share a panel. It keeps the y-axis and the line, so a value can
 still be read off a panel rather than guessed from a colour.
 **Costs:** comparing two years becomes looking from one panel to another instead
 of at one line against another, which is what an overlay is for. Panel area falls
-as 1/N, and at thirty years each panel is 200 × 104 px carrying 365 daily points,
+as one over the number of grid slots, which is 1/N only where the grid divides
+evenly: ten years in a 4 × 3 grid leave two slots empty, so each panel gets 8.3%
+and not 10%. At thirty years each panel is 200 × 104 px carrying 365 daily points,
 which is 1.8 points per pixel: a sparkline whose shape reads but whose values do
 not. It is **not** the free reuse of the existing chart it might look like, and
 an earlier draft of this document claimed it was. `ChartView` in
@@ -272,10 +290,12 @@ much smaller margin than the uncorrected figure suggested.
 (`plans/20260908_2031-weather-viewer-poc-plan.md` §5) chose ECharts partly
 because it supports heatmaps natively, but still a new adapter path, a colour
 scale, and a legend that no longer means what the chip list means. Reading a
-value off a colour is far less precise than off an axis. Zoom and opacity do not
-obviously survive: zoom acts on time and a heatmap's x-axis is a canonical day of
-year, and opacity exists to let overlapping lines show through, which cells never
-do.
+value off a colour is far less precise than off an axis. None of zoom, detail or
+opacity obviously survives: zoom acts on time and a heatmap's x-axis is a
+canonical day of year; opacity exists to let overlapping lines show through,
+which cells never do; and the detail slider resamples the series the line chart
+draws, so a matrix would need a cell-size control of its own instead. The
+cell-size measurements above are that question asked in advance.
 **Best at:** thirty years and up, and uniquely at all eighty.
 
 ### Sequential ramp: keep the overlay, change the colours
@@ -358,18 +378,26 @@ opinion the same weight hides which is which.
 
 | | Anomaly | Small multiples | Heatmap | Sequential ramp | Envelope | Cumulative |
 |---|---|---|---|---|---|---|
-| Fixes resolution | **yes, 2.9×** | *judgement: yes* | not applicable | no | *judgement: yes* | *judgement: yes* |
-| Fixes occlusion | **no, measured identical** | yes, by construction | yes, by construction | no | *judgement: yes* | **partly, 3.4 swaps** |
+| Fixes resolution | **yes, 2.9×** | *judgement: yes* | not applicable | no | not argued below | *judgement: yes* |
+| Fixes occlusion | **no, measured identical** | yes, by construction | yes, by construction | no | *judgement: yes, with 1-2 years drawn* | **partly, 3.4 swaps** |
 | Years it works at | *judgement: 2-5* | *judgement: 5-15, 30 for shape only* | *judgement: 30-80* | *judgement: 24+* | *judgement: 1-2 over a band* | not measured |
 | Variables covered | all 13 | all 13 | all 13 | all 13 | all 13 | **2 of 13** |
-| Exact values readable | yes | yes to about 15 years, shape only past that | no | yes | yes | yes |
-| Needs a change to `ChartView` | no | yes, multi-grid | yes, a matrix | no | no | yes |
-| Keeps zoom, detail, opacity | all three | *judgement: all three* | *judgement: none of the three* | all three | all three | *judgement: zoom only; detail becomes moot* |
+| Exact values readable | yes | *judgement: yes to about 15 years, shape only past that* | no | yes | yes | yes |
+| Needs a change to `ChartView` | no | yes, multi-grid | yes, a matrix | no | yes, a band series | no |
+| Keeps zoom, detail, opacity | all three | *judgement: all three* | *judgement: none of the three* | all three | *judgement: all three* | *judgement: zoom only; detail becomes moot* |
 | Build cost | *judgement: lowest* | *judgement: low* | *judgement: highest* | *judgement: lowest* | *judgement: medium* | *judgement: medium* |
 | Answers | how did these few years differ | what did each year look like | which years were unusual, and when | is there drift over time | was this year unusual | how much so far |
 
-Build cost is the row to be most sceptical of. Nothing here measures it and the
-recommendation leans on it.
+Build cost is the row to be most sceptical of: nothing here measures it. Two
+parts of the recommendation lean on it — taking the anomaly when the budget is
+smallest, and building small multiples before the heatmap — while the choice
+between those two is explicitly *not* made on cost. Section 4 says why.
+
+The `ChartView` row is narrower than it looks. It asks only whether the adapter
+contract changes shape, which is why the anomaly and the cumulative form both
+score "no": each draws the same lines against the same `Axis`. Both still cost a
+second precomputed range in `meta.json` and a mode flag in `AppState`, which is
+real work in the layers below the chart. A "no" in that row is not a free form.
 
 ---
 
@@ -378,11 +406,14 @@ recommendation leans on it.
 **Build small multiples.** ← recommended, but it is close, and section 4.1 names
 the one question that flips it.
 
-The measured failure is occlusion, and it grows with the number of pairs on
-screen rather than with any worsening of the lines themselves. Exactly two
-candidates remove it outright, small multiples and the heatmap, and everything
-else here is either cheaper and no help against it, or an answer to a different
-question.
+Two failures were measured, resolution and occlusion. Resolution has a cheap fix
+and occlusion does not, so occlusion is what decides the form: it grows with the
+number of pairs on screen rather than with any worsening of the lines themselves.
+Two candidates remove it outright while still showing many years, small multiples
+and the heatmap. The envelope removes it as well, but only by drawing one or two
+years over a band, which is a different question rather than a way to compare
+many years. Everything else here is either cheaper and no help against it, or an
+answer to a different question.
 
 Between those two, the argument for small multiples is **not** cost. An earlier
 draft said it reuses the existing chart and is therefore cheaper; the code says
@@ -432,7 +463,7 @@ one first.
 
 One more thing worth knowing before choosing: the app's detail slider already
 takes some of the sting out of the overlay, cutting crossings per pair from 94 a
-year to 21 at weekly. It costs 31% of the spread to do it. If that trade is
+year to 21 at weekly. It costs 32% of the spread to do it. If that trade is
 acceptable in practice, the case for building anything at all is weaker than the
 rest of this document implies, and the anomaly alone may be enough.
 
@@ -490,7 +521,8 @@ from document 2's hour-by-hour decomposition, not from that test.
 ## 5. What this document does not decide
 
 - **The colour scale**, if the heatmap is chosen. Diverging around a normal is
-  the obvious choice and the cell-noise measurement above is the constraint on it.
+  one candidate, and the cell-noise measurement above is the constraint on any of
+  them. This document does not choose between them.
 - **What happens to the year strip** under a heatmap of all eighty years, which
   needs no year selection at all, and under small multiples, which needs one.
 - **Whether forms coexist** behind a switch or replace one another.

@@ -11,12 +11,25 @@ and that every number a document quotes exists in `EDA/stats/` so drift shows up
 as a git diff. That makes drift *visible*; it does not make it *fail*. This makes
 it fail.
 
-Each expectation below is a number as the document prints it, checked against the
-CSV to the rounding the document uses. It is deliberately dumb and duplicated: if
-a measurement moves and the prose does not, or the prose is edited and the
-measurement does not, this exits non-zero and names the pair. Four adversarial
-review passes over this document found stale numbers left behind by partial
-corrections three separate times, which is the failure this exists to catch.
+Three kinds of check, because three kinds of drift have got through.
+
+`eq` compares a number as the document prints it against the CSV cell it came
+from, to the rounding the document uses. It is deliberately dumb and duplicated,
+and it catches a measurement that moved under settled prose. On its own it does
+not read the document at all, so prose edited without touching the literal here
+used to pass in silence.
+
+`says` requires the document to still print a given sentence verbatim. `under`
+checks a bound the prose asserts across many cells. Both exist for claims the
+prose *derives* from cells rather than quoting from them: a difference, a ratio,
+an "every other variable is under X". Nothing checked that class until the fifth
+review pass, which found three of them wrong at once - a "less than 0.2 points"
+that was 1.020 for sunshine, a "share of the area" that was 1/N rather than an
+area, and a spread that fell 32% and was written as 31%.
+
+Five adversarial review passes over this document have found numbers left stale
+by corrections applied in one place and not another, four separate times. That is
+the failure this exists to catch.
 
 Run it after any edit to the document or to `eda_forms.py`.
 """
@@ -25,6 +38,7 @@ from pathlib import Path
 import pandas as pd
 
 S = Path("EDA/stats")
+DOC = Path("EDA/04-chart-forms.md").read_text()
 fails, checks = [], 0
 
 def eq(label, got, want, tol=0.00501):
@@ -32,6 +46,25 @@ def eq(label, got, want, tol=0.00501):
     checks += 1
     if abs(float(got) - float(want)) > tol:
         fails.append(f"{label}: doc says {want}, CSV says {got}")
+
+def says(label, snippet):
+    """The document must still print this text verbatim.
+
+    `eq` compares a literal transcribed from the prose against a CSV, so the
+    prose itself is never read: edit the document alone and every `eq` still
+    passes while the sentence is wrong. Pair `says` with `eq` wherever a claim
+    is arithmetic the prose performs rather than a cell it quotes.
+    """
+    global checks
+    checks += 1
+    if snippet not in DOC:
+        fails.append(f"{label}: the document no longer contains {snippet!r}")
+
+def under(label, got, limit):
+    global checks
+    checks += 1
+    if not float(got) < limit:
+        fails.append(f"{label}: {float(got):.3f} is not under the {limit} the doc claims")
 
 sep = pd.read_csv(S / "04-separation.csv", index_col=0)
 doc_sep = {  # years: (separation, raw axis, raw %, anomaly axis, anomaly %)
@@ -158,7 +191,7 @@ for k, hold in (("msl", 18.4), ("temp", 25.8), ("wdsp", 33.2), ("rhum", 35.0),
 
 
 sm = pd.read_csv(S / "04-small-multiples.csv", index_col=0)
-for y, w, h, share in ((4, 600, 260, 25.0), (10, 300, 173, 10.0), (30, 200, 104, 3.3), (80, 133, 58, 1.3)):
+for y, w, h, share in ((4, 600, 260, 25.0), (10, 300, 173, 8.3), (30, 200, 104, 3.3), (80, 133, 58, 1.2)):
     eq(f"sm {y} width", sm.loc[y, "panel_width_px"], w, 0.5)
     eq(f"sm {y} height", sm.loc[y, "panel_height_px"], h, 0.5)
     eq(f"sm {y} share", sm.loc[y, "panel_area_share_pct"], share, 0.0501)
@@ -178,6 +211,53 @@ for y, pairs, cr in ((2, 1, 0.28), (5, 10, 2.56), (10, 45, 11.63), (20, 190, 47.
     eq(f"crossings n={y}", occ2.loc[y, "expected_crossings_per_point"], cr, 0.005)
 eq("swap n=5", occ2.loc[5, "pct_days_pair_swaps_raw"], 25.6, 0.05)
 eq("swap n=20", occ2.loc[20, "pct_days_pair_swaps_raw"], 25.2, 0.05)
+
+# --- Claims derived from cells, rather than quoted from them ---------------
+# Everything above checks one number against the cell it came from. The prose
+# also states differences, ratios and comparisons *between* cells, and nothing
+# checked those. The fifth review pass found three of them wrong at once,
+# including a "less than 0.2 points" that was in fact 1.020 for sunshine.
+
+gap = var["pct_days_pair_swaps"] - var["pct_days_pair_swaps_ties_hold"]
+eq("ties gap sun", gap["sun"], 1.0, 0.051)
+says("ties gap sun in prose", "1.0 points apart")
+for k in ("temp", "rhum", "msl", "wdsp", "vis"):
+    under(f"ties gap {k}", gap[k], 0.2)
+says("ties gap others in prose", "less than 0.2 points")
+
+res = pd.read_csv(S / "04-resolution.csv", index_col=0)
+daily, weekly = res.loc["1 day"], res.loc["1 week"]
+eq("spread fall daily to weekly",
+   100 * (daily["cross_year_sd_c"] - weekly["cross_year_sd_c"]) / daily["cross_year_sd_c"], 32, 0.5)
+says("spread fall in section 1", "falls 32% over the same range")
+says("spread fall restated in 4.1", "costs 32% of the")
+
+eq("crossing ratio daily to weekly",
+   daily["crossings_per_pair_per_year"] / weekly["crossings_per_pair_per_year"], 4.5, 0.25)
+says("crossing ratio in prose", "factor of four and a half")
+
+# The panel share is the panel's real share of the plot, not 1/N: a grid that
+# does not divide evenly leaves empty slots and every panel is smaller.
+for y in sm.index:
+    eq(f"sm {y} share is area, not 1/N",
+       sm.loc[y, "panel_area_share_pct"],
+       100 * sm.loc[y, "panel_width_px"] * sm.loc[y, "panel_height_px"] / (1200 * 520), 0.005)
+says("sm empty slots explained", "leave two slots empty, so each panel gets 8.3%")
+
+# The shape of the occlusion argument: pairs grow as N(N-1)/2, and crossings
+# are pairs times the swap rate. Section 1 rests on both.
+for y in (2, 5, 10, 20, 30):
+    eq(f"pairs formula n={y}", occ2.loc[y, "pairs_on_screen"], y * (y - 1) / 2, 0.5)
+    eq(f"crossings are pairs x rate n={y}", occ2.loc[y, "expected_crossings_per_point"],
+       occ2.loc[y, "pairs_on_screen"] * occ2.loc[y, "pct_days_pair_swaps_raw"] / 100, 0.01)
+
+# Subtracting a normal cannot move separation. That identity is the document's
+# proof that the anomaly buys nothing in occlusion, so it is checked, not assumed.
+for y in sep.index:
+    eq(f"anomaly separation identical n={y}",
+       sep.loc[y, "anomaly_separation_c"], sep.loc[y, "raw_separation_c"], 0.0005)
+    eq(f"anomaly swap rate identical n={y}",
+       occ2.loc[y, "pct_days_pair_swaps_anomaly"], occ2.loc[y, "pct_days_pair_swaps_raw"], 0.0005)
 
 print(f"{checks} numeric claims checked against the CSVs")
 if fails:
