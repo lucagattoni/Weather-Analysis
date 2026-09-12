@@ -24,6 +24,12 @@ considered and deferred during the multi-year build. Leaving them out would have
 offered a choice narrower than the one the project had already framed, and small
 multiples in particular turns out to matter.
 
+Those same plan sections also list **overlaying two variables** and **URL state**.
+Neither is here, deliberately: they are not answers to the question this document
+asks, which is how to show many years of one variable. Overlaying two variables
+is a different axis of the same chart and would face every problem measured in
+section 1 unchanged.
+
 ---
 
 ## 1. What actually fails, and what does not
@@ -110,7 +116,7 @@ own README tells people not to use for a wide selection. From
 | 2 days | 183 | 2.10 °C | 32.4% | 59.3 |
 | 4 days | 92 | 1.81 °C | 38.9% | 35.8 |
 | 1 week | 53 | 1.62 °C | 39.7% | 21.0 |
-| 4 weeks | 14 | 0.99 °C | 39.8% | 5.6 |
+| 4 weeks, past what the slider offers | 14 | 0.99 °C | 39.8% | 5.6 |
 
 The rate and the count point opposite ways, and both are true. Coarser steps make
 each remaining point *more* likely to swap, because averaging pulls the years
@@ -127,21 +133,26 @@ The anchor does not carry the finding.
 
 Nor does the variable. From `EDA/stats/04-variables.csv`, ten years, daily:
 
-| Variable | Aggregate | Swap rate | Tied days |
-|---|---|---|---|
-| Mean sea level pressure | mean | 18.4% | 0.0% |
-| Air temperature | mean | 25.8% | 0.1% |
-| Mean wind speed | mean | 33.3% | 0.4% |
-| Relative humidity | mean | 35.0% | 0.1% |
-| Precipitation amount | sum | 36.3% | 18.5% |
-| Visibility | mean | 36.3% | 0.2% |
-| Sunshine duration | sum | 42.9% | 2.4% |
+| Variable | Aggregate | Swap rate, ties dropped | Swap rate, ties hold | Tied days |
+|---|---|---|---|---|
+| Mean sea level pressure | mean | 18.4% | 18.4% | 0.0% |
+| Air temperature | mean | 25.8% | 25.8% | 0.1% |
+| Mean wind speed | mean | 33.3% | 33.2% | 0.4% |
+| Relative humidity | mean | 35.0% | 35.0% | 0.1% |
+| Precipitation amount | sum | 36.3% | 29.5% | 18.5% |
+| Visibility | mean | 36.3% | 36.3% | 0.2% |
+| Sunshine duration | sum | 42.9% | 41.9% | 2.4% |
 
 Temperature, which everything else here is measured on, has the second *lowest*
 swap rate of the seven. Every other variable tangles at least as much, so
-choosing temperature flattered the line chart rather than the alternatives. Rain
-is the odd one out for a different reason: 18.5% of its day-pairs are exactly
-tied, both years recording nothing, so "which is on top" is often undefined.
+choosing temperature flattered the line chart rather than the alternatives.
+
+Rain needs the two columns. On 18.5% of its day-pairs both years record exactly
+nothing, and "which is on top" is then undefined. Dropping those days and
+comparing what is left gives 36.3%; treating a tie as leaving the leader where it
+was gives 29.5%. Both are defensible and the gap is nearly seven points, so the
+rain figure is a range and not the precise fact a single column would imply.
+Every other variable moves by less than 0.2 points between the two.
 
 ---
 
@@ -190,14 +201,21 @@ The same line chart repeated, one year per panel, on a shared axis. From
 | 80 | 9 × 9 | 133 × 58 px | 1.3% |
 
 **Buys:** occlusion is gone by construction, exactly as for the heatmap, because
-no two years share a panel. It keeps the y-axis, so values stay readable, and it
-reuses the existing line chart rather than needing a new one, which makes it the
-cheaper of the two forms that actually solve the problem.
+no two years share a panel. It keeps the y-axis and the line, so a value can
+still be read off a panel rather than guessed from a colour.
 **Costs:** comparing two years becomes looking from one panel to another instead
 of at one line against another, which is what an overlay is for. Panel area falls
 as 1/N, and at thirty years each panel is 200 × 104 px carrying 365 daily points,
-which is 1.8 points per pixel: a sparkline, not a chart you read values off.
-**Best at:** five to about thirty years.
+which is 1.8 points per pixel: a sparkline whose shape reads but whose values do
+not. It is **not** the free reuse of the existing chart it might look like, and
+an earlier draft of this document claimed it was. `ChartView` in
+`src/chart/adapter.ts` carries one x-range, one list of y-axes and one list of
+series, and the adapter builds a single `grid` and captures pointer events for
+one canvas, so N panels need either a multi-grid shape for that contract or N
+synchronised instances, plus shared zoom. That is real work nobody here has
+costed.
+**Best at:** five to about fifteen years, where a panel is still a chart; to
+thirty if the shape is all you need.
 
 ### Heatmap: years down, day of year across
 
@@ -220,12 +238,12 @@ earlier draft of this document said the heatmap was the only form that makes the
 `EDA/stats/04-heatmap-signal.csv` is the measurement that killed it.** Colour has
 to compete with the noise in the cells, and the shift loses:
 
-| Cell | Cells per year | Trend ÷ cell noise | One year ÷ row noise |
-|---|---|---|---|
-| 1 day | 365 | 0.17 | 3.62 |
-| 1 week | 53 | 0.25 | 1.93 |
-| 1 month | 13 | 0.34 | 1.40 |
-| 1 season | 5 | 0.42 | 1.14 |
+| Cell | Cells per year | Effective cells per row | Trend ÷ cell noise | One year ÷ row noise |
+|---|---|---|---|---|
+| 1 day | 365 | 70 | 0.17 | 1.59 |
+| 1 week | 53 | 28 | 0.25 | 1.40 |
+| 1 month | 13 | 10 | 0.34 | 1.24 |
+| 1 season | 5 | 5 | 0.42 | 1.14 |
 
 The left column is the eighty-year shift against the spread of cell values: 0.17
 to 0.42, never close to 1, so the trend is not visible as colour at any cell size
@@ -233,12 +251,20 @@ tested. Aggregating helps a little and then stops, because coarser cells lose
 resolution as fast as they gain signal.
 
 The right column is a different question with a different answer: a single year's
-deviation against the noise of its own row, which the eye averages along. At one
-cell per day that ratio is **3.6**, so an individual warm or cold year does read
-as a row, and finer cells are better for it, not worse. The honest claim is
-therefore: **a heatmap makes an unusual year findable anywhere in eighty years of
-record; it does not make the slow trend visible.** The slow trend is what
-document 2's fitted trends are for.
+deviation against the noise of its own row, which the eye averages along. The
+effective-cells column is why it is not simply the cell count: days in a row are
+autocorrelated, one warm day following another, with a lag-1 of 0.68 at daily
+cells, so a 365-cell row carries the information of about 70 independent ones.
+The correction is this project's own, the same `n_eff = n(1 - r1)/(1 + r1)` that
+`eda_common.fit_trend` applies throughout documents 1 to 3, and it takes the
+daily ratio from 3.6 to **1.59**.
+
+The honest claim is therefore narrower than it looked: **a heatmap makes an
+unusual year findable across eighty years of record, but only just, at about 1.6
+times the noise of its own row; and it does not make the slow trend visible at
+all.** The slow trend is what document 2's fitted trends are for. Finer cells are
+still better for spotting a year than coarser ones, 1.59 against 1.14, but by a
+much smaller margin than the uncorrected figure suggested.
 
 ![The same eighty years at two cell sizes](figures/04-heatmap-detail.png)
 
@@ -268,8 +294,8 @@ fighting it.
 and individual years become *less* identifiable, not more, since adjacent years
 become near-identical colours. It answers "is there drift over time" and nothing
 else.
-**Best at:** twenty years and up, as a cheap improvement to a form that will
-still be hard to read.
+**Best at:** twenty-four years and up, which is where the plan placed it, as a
+cheap improvement to a form that will still be hard to read.
 
 ### Envelope: a percentile band with years on top
 
@@ -323,19 +349,22 @@ Three kinds of cell, kept apart, because a table giving a measured number and an
 opinion the same weight hides which is which.
 
 - **Bold** is measured and the CSV is named in section 2.
-- *Judgement* is my assessment with nothing measured behind it.
+- *Judgement* is my assessment with nothing measured behind it. Every year-count
+  range is one of these: the CSVs give pixel sizes, and turning a pixel size into
+  "this is still readable" is a call, not a measurement.
 - Plain text is a structural fact, true by what the form is. "A heatmap cannot
-  show an exact value" needs no CSV.
+  show an exact value" needs no CSV, and neither does which parts of `ChartView`
+  a form would have to change.
 
 | | Anomaly | Small multiples | Heatmap | Sequential ramp | Envelope | Cumulative |
 |---|---|---|---|---|---|---|
 | Fixes resolution | **yes, 2.9×** | *judgement: yes* | not applicable | no | *judgement: yes* | *judgement: yes* |
 | Fixes occlusion | **no, measured identical** | yes, by construction | yes, by construction | no | *judgement: yes* | **partly, 3.4 swaps** |
-| Years it works at | *judgement: 2-5* | **5-30, from panel size** | **30-80, from cell size** | *judgement: 20+* | *judgement: 1-2 over a band* | not measured |
+| Years it works at | *judgement: 2-5* | *judgement: 5-15, 30 for shape only* | *judgement: 30-80* | *judgement: 24+* | *judgement: 1-2 over a band* | not measured |
 | Variables covered | all 13 | all 13 | all 13 | all 13 | all 13 | **2 of 13** |
-| Exact values readable | yes | yes | no | yes | yes | yes |
-| Reuses the line chart | yes | yes | no | yes | yes | no |
-| Keeps zoom and opacity | yes | *judgement: yes* | *judgement: neither* | yes | yes | *judgement: zoom only* |
+| Exact values readable | yes | yes to about 15 years, shape only past that | no | yes | yes | yes |
+| Needs a change to `ChartView` | no | yes, multi-grid | yes, a matrix | no | no | yes |
+| Keeps zoom, detail, opacity | all three | *judgement: all three* | *judgement: none of the three* | all three | all three | *judgement: zoom only; detail becomes moot* |
 | Build cost | *judgement: lowest* | *judgement: low* | *judgement: highest* | *judgement: lowest* | *judgement: medium* | *judgement: medium* |
 | Answers | how did these few years differ | what did each year look like | which years were unusual, and when | is there drift over time | was this year unusual | how much so far |
 
@@ -346,22 +375,36 @@ recommendation leans on it.
 
 ## 4. Recommendation
 
-**Build small multiples.** ← recommended
+**Build small multiples.** ← recommended, but it is close, and section 4.1 names
+the one question that flips it.
 
 The measured failure is occlusion, and it grows with the number of pairs on
-screen rather than with any worsening of the lines themselves. Two candidates
-remove it outright, and between them small multiples is the cheaper: it reuses
-the existing line chart and adapter rather than adding a chart type, it keeps the
-y-axis so values stay readable, and at the year counts the app is actually built
-for it has the room. At ten years each panel is 300 × 173 px, which is a real
-chart. The year strip that was just rebuilt maps onto it directly: the years you
-pick are the panels you get.
+screen rather than with any worsening of the lines themselves. Exactly two
+candidates remove it outright, small multiples and the heatmap, and everything
+else here is either cheaper and no help against it, or an answer to a different
+question.
+
+Between those two, the argument for small multiples is **not** cost. An earlier
+draft said it reuses the existing chart and is therefore cheaper; the code says
+otherwise, and that claim is withdrawn in section 2. Both need a change to
+`ChartView`, neither has been costed, and the honest position is that cost does
+not separate them.
+
+What separates them is what a reader can still do with the chart. Small multiples
+keeps the y-axis and the line, so a value can be read rather than inferred from a
+colour, and at ten years a panel is 300 × 173 px, which is a real chart. That
+matters because of what the rest of the app is: the year strip rebuilt in
+September lets a reader pick an arbitrary handful of years, and a handful is what
+small multiples serves best. The years you pick are the panels you get.
 
 **Build the heatmap second, or first if the goal is the whole archive.** It is
 the only candidate that survives past thirty years, where small-multiple panels
-have fallen to 133 × 58 px, and the only way to find an unusual year anywhere in
-eighty years at a glance, which it does at 3.6 times the row noise. It costs the
-most, and one of the two reasons previously given for it turned out to be false.
+have fallen to 133 × 58 px. Its second advantage is real but thin: an unusual
+year reads as a row at **1.59 times** the noise of that row, once the
+autocorrelation along the row is accounted for the way this project accounts for
+it everywhere else. That is above 1 and not far above it. The other reason
+previously given for the heatmap, that it alone makes the eighty-year trend
+visible, was measured and is false.
 
 **Take the anomaly whenever the budget is smallest.** It is the cheapest real
 improvement, it is genuinely the best form at two to five years, and it composes
@@ -374,6 +417,25 @@ answers a different question and should wait until someone wants to ask it. The
 cumulative form covers 2 of 13 variables and its curves cross more than was
 thought.
 
+### 4.1 The question that flips this
+
+**Is the app for comparing a handful of chosen years, or for surveying the whole
+record?**
+
+Everything above says small multiples if it is the first and the heatmap if it is
+the second, and nothing in this data can answer it, because it is a question
+about what the app is for. Two things lean toward the handful: the year strip
+exists to pick arbitrary sets, and at thirty years a small-multiple panel is
+already a sparkline while a heatmap row is still a full-width band. If the answer
+is "both", they are not exclusive, and the order above is the cheaper-to-abandon
+one first.
+
+One more thing worth knowing before choosing: the app's detail slider already
+takes some of the sting out of the overlay, cutting crossings per pair from 94 a
+year to 21 at weekly. It costs 31% of the spread to do it. If that trade is
+acceptable in practice, the case for building anything at all is weaker than the
+rest of this document implies, and the anomaly alone may be enough.
+
 ### Two recommendations were overturned by measurement, including mine
 
 An earlier session recommended the anomaly, on the grounds that it halves the
@@ -385,8 +447,13 @@ because it was "the only form on which a +0.43 °C shift across eighty years is
 visible at all". Measuring that claim rather than asserting it showed the shift
 is 0.17 to 0.42 times the cell noise and is not visible at any cell size. The
 heatmap keeps a real and different advantage, finding an unusual year across the
-whole record, but it no longer outranks the cheaper form that solves the same
-binding problem.
+whole record, though at 1.59 times the row noise rather than the 3.6 an
+uncorrected count of cells suggested.
+
+A third claim of this document's own has since been withdrawn: that small
+multiples is cheaper because it reuses the existing chart. `ChartView` carries
+one grid, so it does not. Cost no longer separates the two forms, and the
+recommendation now rests on what a reader can read off each.
 
 Three figures from the earlier session's summary also failed re-measurement and
 are corrected above: cumulative curves cross 3.4 times per pair after 1 April

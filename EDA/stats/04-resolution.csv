@@ -3,4 +3,4 @@ step,points_per_year,separation_c,cross_year_sd_c,pct_points_pair_swaps,crossing
 2 days,183,6.802,2.103,32.414,59.317
 4 days,92,5.517,1.805,38.877,35.767
 1 week,53,4.951,1.615,39.701,21.041
-4 weeks,14,2.822,0.990,39.829,5.576
+4 weeks (beyond the slider),14,2.822,0.990,39.829,5.576

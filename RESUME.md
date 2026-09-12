@@ -34,9 +34,13 @@ The short version, with the detail and the caveats in the document:
   same number off every year on a given day. The document proves it rather than
   asserting it: the swap rate is computed on raw values and on anomalies in one
   table and the columns are identical to three decimals.
-- The recommendation is **small multiples**, the cheaper of the two forms that
-  remove occlusion outright, with the **heatmap** second and uniquely able to
-  carry all eighty years. It is a recommendation, not a decision.
+- Exactly two forms remove occlusion outright: small multiples and the heatmap.
+  Cost does not separate them, since both need a change to `ChartView`. The
+  recommendation is **small multiples**, because it keeps the y-axis and a
+  readable value, with the **heatmap** second and uniquely able to carry all
+  eighty years. It is close, and section 4.1 of the document names the one
+  question that flips it: whether the app is for a handful of chosen years or
+  for surveying the whole record. That question is yours, not the data's.
 
 Several figures did not survive re-measurement, including two the analysis itself
 had asserted before measuring them. The document records each correction. Do not

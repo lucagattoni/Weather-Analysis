@@ -252,12 +252,20 @@ def table_warming(day: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows).set_index("window")
 
 
-def _swap_rate(matrix: pd.DataFrame) -> float:
+def _swap_rate(matrix: pd.DataFrame, ties: str = "drop") -> float:
     """Share of days on which a pair of years swaps which one is on top.
 
     Averaged over every pair. A line the eye can follow keeps its place; one
     that changes places with its neighbours on a quarter of all days cannot be
     followed by position, only by colour.
+
+    `ties` decides what to do with days the two years record identically, which
+    for temperature is a rounding coincidence and for rain is two dry days.
+    Both readings are defensible and they differ by several points where ties
+    are common, so both are reported rather than one chosen silently:
+
+      drop   remove tied days and compare what is left, so a tie is invisible
+      hold   a tie leaves the leader unchanged, so it cannot be a swap
     """
     swaps = []
     years = list(matrix.index)
@@ -266,7 +274,16 @@ def _swap_rate(matrix: pd.DataFrame) -> float:
             diff = (matrix.loc[a] - matrix.loc[b]).to_numpy()
             diff = diff[np.isfinite(diff)]
             sign = np.sign(diff)
-            sign = sign[sign != 0]
+            if ties == "drop":
+                sign = sign[sign != 0]
+            else:
+                # Carry the last non-zero sign forward across the ties.
+                carried, last = [], 0.0
+                for v in sign:
+                    if v != 0:
+                        last = v
+                    carried.append(last)
+                sign = np.array([v for v in carried if v != 0])
             if sign.size >= 2:
                 swaps.append(float((np.diff(sign) != 0).mean()))
     return 100.0 * float(np.mean(swaps)) if swaps else float("nan")
@@ -385,8 +402,12 @@ def table_resolution(day: pd.DataFrame) -> pd.DataFrame:
     """
     lo, hi = DEMO_YEARS[1] - 9, DEMO_YEARS[1]
     rows = []
+    # The app's slider stops at one point per week (`STEP_HOURS` in
+    # src/model/resample.ts tops out at 168 hours). Four weeks is past what it
+    # can do and is marked as such, so the table cannot be read as if the app
+    # offered it.
     for label, step in (("1 day", 1), ("2 days", 2), ("4 days", 4),
-                        ("1 week", 7), ("4 weeks", 28)):
+                        ("1 week", 7), ("4 weeks (beyond the slider)", 28)):
         work = day.loc[(day["year"] >= lo) & (day["year"] <= hi)].copy()
         work["bucket"] = (work["doy"] - 1) // step
         matrix = work.pivot_table(index="year", columns="bucket", values="mean",
@@ -442,6 +463,7 @@ def table_variables(clean_df: pd.DataFrame) -> pd.DataFrame:
             "separation": _separation(matrix)[0],
             "cross_year_sd": float(matrix.std(axis=0, ddof=1).median()),
             "pct_days_pair_swaps": _swap_rate(matrix),
+            "pct_days_pair_swaps_ties_hold": _swap_rate(matrix, ties="hold"),
             "pct_days_tied": 100.0 * float(np.mean(ties)) if ties else float("nan"),
         })
     return pd.DataFrame(rows).set_index("variable")
@@ -483,19 +505,38 @@ def table_heatmap_signal(day: pd.DataFrame) -> pd.DataFrame:
         signal = float(np.nanmean(late) - np.nanmean(early))
         noise = float(np.nanstd(matrix.to_numpy()))
         # A single cell is not the only thing a reader sees. The eye averages
-        # along a row, and a row of N cells has noise smaller by root N, so an
-        # unusual year can be legible as a row even where the slow trend across
-        # rows is not. These two questions have different answers and the
-        # document has to give both.
+        # along a row, so an unusual year can be legible as a row even where the
+        # slow trend across rows is not. These are two questions with different
+        # answers and the document has to give both.
+        #
+        # Dividing the cell noise by the root of the cell count would assume the
+        # cells in a row are independent, and they are not: one warm day is
+        # followed by another. This project already has a convention for that,
+        # `fit_trend` in eda_common, and it is used here rather than invented:
+        # n_eff = n (1 - r1) / (1 + r1), with r1 the lag-1 autocorrelation along
+        # the row. At one cell per day r1 is around 0.7 and the effective count
+        # is a fifth of the nominal one, which matters a great deal to the
+        # answer.
         year_means = np.nanmean(matrix.to_numpy(), axis=1)
-        row_noise = noise / np.sqrt(matrix.shape[1])
+        r1s = []
+        for row in matrix.to_numpy():
+            row = row[np.isfinite(row)]
+            if row.size > 3:
+                r1s.append(float(np.corrcoef(row[:-1], row[1:])[0, 1]))
+        r1 = float(np.nanmedian(r1s)) if r1s else 0.0
+        r1 = min(max(r1, 0.0), 0.99)
+        n = matrix.shape[1]
+        n_eff = max(n * (1.0 - r1) / (1.0 + r1), 3.0)
+        row_noise = noise / np.sqrt(n_eff)
         rows.append({
             "cell": label,
-            "cells_per_year": int(matrix.shape[1]),
+            "cells_per_year": int(n),
             "trend_signal_c": signal,
             "cell_noise_sd_c": noise,
             "trend_over_cell_noise": signal / noise if noise else float("nan"),
             "year_to_year_sd_c": float(np.nanstd(year_means)),
+            "lag1_along_row": r1,
+            "effective_cells_per_row": n_eff,
             "row_noise_sd_c": float(row_noise),
             "year_over_row_noise": float(np.nanstd(year_means) / row_noise),
         })
