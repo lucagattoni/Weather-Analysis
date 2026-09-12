@@ -59,6 +59,16 @@ PLOT_HEIGHT_PX = 520
 # rounded outward the way `src/model/scales.ts` rounds it.
 APP_TEMP_AXIS = (-15.0, 30.0)
 
+# From `EDA/stats/02-break-test.csv`, the joint trend-plus-step fit in document
+# 2: the trend once a step at 1993 is in the model, and the step itself. The
+# step is NEGATIVE, so it holds the whole-series difference down rather than
+# propping it up. It is not significant on the annual mean on its own
+# (p = 0.242); document 2 section 2.4 makes the case from the hour-by-hour
+# decomposition instead. Both numbers are quoted, not refitted, so this module
+# cannot drift from the document that owns them.
+DOC02_TREND_PER_DECADE = 0.14511
+DOC02_STEP_AT_1993_C = -0.262
+
 
 def _day_of_year(index: pd.DatetimeIndex) -> np.ndarray:
     """Day of year with 29 February folded onto 28 February.
@@ -69,8 +79,12 @@ def _day_of_year(index: pd.DatetimeIndex) -> np.ndarray:
     """
     doy = np.asarray(index.dayofyear)
     leap = np.asarray(index.is_leap_year)
-    after_feb29 = leap & (doy > 60)
-    return np.where(after_feb29, doy - 1, doy)
+    # `>= 60`, not `> 60`. In a leap year 29 February is day 60 and 1 March is
+    # day 61; shifting only the days after 29 February left 29 February sitting
+    # on day 60, which is 1 March in every other year, so the two were averaged
+    # together. Shifting from day 60 puts 29 February on 28 February, which is
+    # what this function claims to do, and lands 1 March on 1 March.
+    return np.where(leap & (doy >= 60), doy - 1, doy)
 
 
 def _daily_temp(clean_df: pd.DataFrame) -> pd.DataFrame:
@@ -198,6 +212,11 @@ def table_warming(day: pd.DataFrame) -> pd.DataFrame:
         third = min(block, span // 2)
         early = series.iloc[:third]
         late = series.iloc[-third:]
+        # The two windows are not the same distance apart, so their differences
+        # are not comparable as they stand. Reporting the gap between the window
+        # centres, and what this project's fitted trend alone would predict over
+        # that gap, is what makes them comparable.
+        gap_years = float(late.index.to_series().mean() - early.index.to_series().mean())
         rows.append({
             "window": label,
             "years_used": span,
@@ -208,6 +227,10 @@ def table_warming(day: pd.DataFrame) -> pd.DataFrame:
             "difference_c": float(late.mean() - early.mean()),
             "pct_of_app_axis": 100.0 * float(late.mean() - early.mean())
             / (APP_TEMP_AXIS[1] - APP_TEMP_AXIS[0]),
+            "years_between_window_centres": gap_years,
+            "trend_implied_c": DOC02_TREND_PER_DECADE * gap_years / 10.0,
+            "measured_minus_trend_implied_c": float(late.mean() - early.mean())
+            - DOC02_TREND_PER_DECADE * gap_years / 10.0,
         })
     return pd.DataFrame(rows).set_index("window")
 
@@ -271,6 +294,13 @@ def table_occlusion(day: pd.DataFrame) -> pd.DataFrame:
             "years": count,
             "window": f"{lo}-{hi}",
             "separation_c": sep,
+            # Separation is the range across years, and every window here is a
+            # superset of the one before it, so it can only climb as years are
+            # added: that climb is arithmetic, not a finding. The standard
+            # deviation across years on the same day does not have that
+            # property, and is the honest measure of how spread out they are.
+            "cross_year_sd_c": float(_matrix(day, lo, hi, "mean")
+                                     .std(axis=0, ddof=1).median()),
             "roughness_c": roughness,
             "roughness_over_separation": roughness / sep if sep else float("nan"),
             "pct_days_pair_swaps_raw": _swap_rate(matrix),
@@ -283,17 +313,58 @@ def table_occlusion(day: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows).set_index("years")
 
 
+def table_anchor_sweep(day: pd.DataFrame) -> pd.DataFrame:
+    """The same measurements from several end-years, not just from 2025.
+
+    Every other table is anchored at 2025 and extends backwards, which is a
+    choice, and a conclusion that only holds for the most recent decade would be
+    a weak basis for a build decision. Three of these windows deliberately
+    straddle September 1993, so the observation change is inside them.
+    """
+    rows = []
+    windows = [
+        ("2006-2025", 2006, 2025),
+        ("1986-2005", 1986, 2005),
+        ("1983-2002", 1983, 2002),
+        ("1978-1997", 1978, 1997),
+        ("1966-1985", 1966, 1985),
+        ("1946-1965", 1946, 1965),
+    ]
+    for label, lo, hi in windows:
+        matrix = _matrix(day, lo, hi, "mean")
+        sep, _ = _separation(matrix)
+        roughness = float(np.nanmedian([
+            np.nanmedian(np.abs(np.diff(matrix.loc[year].to_numpy())))
+            for year in matrix.index
+        ]))
+        rows.append({
+            "window": label,
+            "years": int(len(matrix.index)),
+            "crosses_1993": lo <= 1993 <= hi,
+            "separation_c": sep,
+            "roughness_c": roughness,
+            "cross_year_sd_c": float(matrix.std(axis=0, ddof=1).median()),
+            "pct_days_pair_swaps": _swap_rate(matrix),
+        })
+    return pd.DataFrame(rows).set_index("window")
+
+
 def table_heatmap_cells(day: pd.DataFrame) -> pd.DataFrame:
     """Cell size for a heatmap of years by day of year, at a real plot size."""
+    # 1946 to 2025 is 80 complete years, which is what the archive holds; 81
+    # would start the window in 1945 and there are no 1945 rows. The column
+    # count is 365 because the leap-day fold shares 28 and 29 February.
+    columns = int(day["doy"].max())
+    full = int(day["year"].max() - day["year"].min())
     rows = []
-    for count in (10, 30, 81):
+    for count in (10, 30, full):
         hi = DEMO_YEARS[1]
         lo = hi - count + 1
         rows.append({
             "years": count,
-            "columns": 366,
-            "cells": count * 366,
-            "cell_width_px": PLOT_WIDTH_PX / 366.0,
+            "columns": columns,
+            "cells": count * columns,
+            "cell_width_px": PLOT_WIDTH_PX / columns,
             "cell_height_px": PLOT_HEIGHT_PX / count,
             "window": f"{lo}-{hi}",
         })
@@ -513,6 +584,7 @@ def run_forms(csv_path: Path) -> None:
     save_table(table_app_axis(day), STATS / "04-axis-cost.csv", float_format="%.3f")
     save_table(table_warming(day), STATS / "04-warming-signal.csv", float_format="%.3f")
     save_table(table_occlusion(day), STATS / "04-occlusion.csv", float_format="%.3f")
+    save_table(table_anchor_sweep(day), STATS / "04-anchor-sweep.csv", float_format="%.3f")
     save_table(table_heatmap_cells(day), STATS / "04-heatmap-cells.csv", float_format="%.3f")
     save_table(table_band_width(day), STATS / "04-band-width.csv", float_format="%.3f")
     save_table(table_envelope(day), STATS / "04-envelope-escape.csv", float_format="%.3f")

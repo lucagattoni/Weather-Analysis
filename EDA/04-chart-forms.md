@@ -32,15 +32,22 @@ Three quantities, all measured on daily mean temperature, in
 | Quantity | What it means | Value |
 |---|---|---|
 | Separation | median gap between the highest and lowest year on a given day, at ten years | 7.22 °C |
+| Spread | median standard deviation across years on a given day, at ten years | 2.36 °C |
 | Roughness | median day-to-day movement within a single year | 1.20 °C |
-| Swap rate | share of days on which a given pair of years changes which is on top | 25.9% |
+| Swap rate | share of days on which a given pair of years changes which is on top | 25.8% |
+
+Separation is a range, a maximum minus a minimum, and every window here is a
+superset of the one before it, so it can only climb as years are added. That
+climb is arithmetic and not a finding, which is why the spread column is there
+beside it: a standard deviation across years does not have that property. It
+rises from 1.51 °C at two years to 2.40 °C at twenty and then stops.
 
 **Resolution is a real problem.** The app's fixed axis spans 45 °C, so a ten-year
 selection's 7.22 °C of separation fills 16.0% of the plot height. An axis fitted
 to what is actually drawn spans 24.67 °C and lifts that to 29.3%.
 
 **Roughness is not the problem.** At 1.20 °C it is smaller than the separation at
-every year count from three upwards, so the lines are not simply lost in their
+every year count tested, two included, so the lines are not simply lost in their
 own noise.
 
 **Ordering is the problem.** Any two years change places on about a quarter of
@@ -59,12 +66,31 @@ once on anomalies, precisely so this is held to the data rather than asserted:
 | Years | Swap rate, raw | Swap rate, anomaly |
 |---|---|---|
 | 2 | 28.022% | 28.022% |
-| 10 | 25.856% | 25.856% |
-| 30 | 25.525% | 25.525% |
+| 10 | 25.844% | 25.844% |
+| 30 | 25.517% | 25.517% |
 
 Identical to three decimals, as it must be. **The anomaly form buys resolution
 and buys exactly nothing in occlusion.** That is not an argument against it. It
 is an argument about which problem it solves.
+
+### It is not an artefact of the decade chosen
+
+Every window above ends at 2025, which is a choice, and a conclusion that only
+held for the most recent decade would be a poor basis for a build decision.
+`EDA/stats/04-anchor-sweep.csv` repeats the measurements on six twenty-year
+windows spread across the record, three of them straddling September 1993:
+
+| Window | Crosses 1993 | Separation | Spread | Swap rate |
+|---|---|---|---|---|
+| 2006-2025 | no | 8.85 °C | 2.43 °C | 25.2% |
+| 1986-2005 | yes | 8.69 °C | 2.32 °C | 25.5% |
+| 1983-2002 | yes | 8.81 °C | 2.37 °C | 25.1% |
+| 1978-1997 | yes | 8.80 °C | 2.36 °C | 24.8% |
+| 1966-1985 | no | 8.58 °C | 2.25 °C | 24.9% |
+| 1946-1965 | no | 8.57 °C | 2.32 °C | 24.6% |
+
+The swap rate sits between 24.6% and 25.5% everywhere, including across the
+observation change. The finding does not depend on the anchor.
 
 ---
 
@@ -87,6 +113,8 @@ From `EDA/stats/04-separation.csv`:
 Against the app's own fixed 45 °C axis the gain is larger still: 16.0% to 46.2%
 at ten years, which is 2.9 times the plot height for the same difference.
 
+![Separation as a share of the axis each form needs](figures/04-separation.png)
+
 **Buys:** the largest resolution gain of the four, at every year count. Cheapest
 to build by a wide margin: a build-time day-of-year normal in `meta.json` and a
 subtraction in the model. No new chart type, no adapter change, and the existing
@@ -105,13 +133,13 @@ One row per year, one column per day, colour carrying the value. From
 
 | Years | Cells | Cell size |
 |---|---|---|
-| 10 | 3,660 | 3.3 × 52.0 px |
-| 30 | 10,980 | 3.3 × 17.3 px |
-| 81 | 29,646 | 3.3 × 6.4 px |
+| 10 | 3,650 | 3.3 × 52.0 px |
+| 30 | 10,950 | 3.3 × 17.3 px |
+| 80 | 29,200 | 3.3 × 6.5 px |
 
 **Buys:** occlusion is gone by construction, because no two years share a pixel.
-It is the only one of the four that can show the whole archive at once, and at 81
-years each row is still 6.4 px tall. It is also the only form that makes the
+It is the only one of the four that can show the whole archive at once, and at 80
+years, which is what the archive holds, each row is still 6.5 px tall. It is also the only form that makes the
 long-run signal visible: the difference between the first and last thirty years
 is **+0.43 °C** (`EDA/stats/04-warming-signal.csv`), which is 0.96% of the app's
 fixed axis, or about five pixels on a 520 px plot. On a line chart that is
@@ -121,14 +149,37 @@ off a colour is far less precise than reading it off an axis, so it answers
 "which years were warm, and when" rather than "how warm was 14 June 2011".
 Sub-daily detail cannot survive it, so the detail slider becomes meaningless
 below one point per day.
-**Best at:** ten years and up, and uniquely at all 81.
+**Best at:** ten years and up, and uniquely at all 80.
 
-**The long-run number carries a caveat.** The station changed how it observes in
-September 1993 (`EDA/01-data-review.md` section 10). Measured only within the
-post-1993 era the first-to-last-fifteen-years difference is **+0.22 °C**, half
-the whole-series figure. Some of the +0.43 °C is the instrument, not the climate.
-A heatmap will show the 1993 step as a horizontal seam, which is honest, and the
-footer already says so.
+**The long-run number carries a caveat, and it runs the other way.** The station
+changed how it observes in September 1993 (`EDA/01-data-review.md` section 10),
+and it would be easy to assume that inflates the +0.43 °C. It does not. Document
+2 fits a trend and a step together, which is the only model that can separate
+them, and puts the step at **-0.262 °C**: a cooling offset
+(`EDA/stats/02-break-test.csv`). It holds the whole-series figure **down**.
+
+The arithmetic is in `EDA/stats/04-warming-signal.csv`, which reports the gap
+between the two window centres alongside the difference, because two windows a
+different distance apart cannot be compared as they stand:
+
+| Window | Measured | Centres apart | Trend alone would give | Difference |
+|---|---|---|---|---|
+| 1946-1975 against 1996-2025 | +0.43 °C | 50 years | +0.73 °C | -0.29 °C |
+| 1994-2008 against 2011-2025 | +0.22 °C | 17 years | +0.25 °C | -0.03 °C |
+
+The trend column uses document 2's fitted +0.145 °C per decade. The whole-series
+comparison falls **0.29 °C short** of what the trend alone predicts, which is the
+-0.262 °C step almost exactly; the post-1993 comparison, which never crosses
+1993, falls short by 0.03 °C, which is nothing. So the smaller +0.22 °C is not a
+cleaner measurement of the same thing. It is a shorter window, and comparing the
+two as though they measured the same quantity was the error.
+
+For the decision this only strengthens the case: **+0.43 °C is a floor.** The
+signal a heatmap would reveal is that or larger. One honest qualifier: the step
+is not significant on the annual mean by itself (p = 0.24), and document 2 makes
+its case from the hour-by-hour decomposition rather than from that test. A
+heatmap will show the 1993 change as a horizontal seam, which is the honest
+outcome, and the app footer already names it.
 
 ### Envelope: a percentile band with years on top
 
@@ -172,11 +223,12 @@ averaged, and a running total of a mean is not a quantity. From
 | Sun | whole series | 1240-1740 h | 364 h | 3.4 |
 
 **Buys:** integrating removes the day-to-day roughness entirely, so the curves
-are smooth and a year's standing is readable at any point. Annual totals differ
-by a factor of two across the archive, which is a large, real signal.
+are smooth and a year's standing is readable at any point. Annual rainfall totals
+differ by a factor of **2.0** across the archive, which is a large, real signal;
+sunshine differs by **1.4**, and those two variables are all this form covers.
 **Costs:** it covers 2 of 13 variables. And the curves are not as well behaved as
-was previously claimed here: a pair swaps order **3.5 times after 1 April**, so
-"they rarely cross" is wrong.
+was previously claimed here: a pair swaps order **3.4 times after 1 April**
+averaged over all four rows of the table, so "they rarely cross" is wrong.
 **Best at:** the question "how wet is this year so far", for rain and sunshine
 only.
 
@@ -184,11 +236,15 @@ only.
 
 ## 3. Side by side
 
+Cells in **bold** are measured and the CSV is named in section 2. The rest are
+judgement, and are marked so, because a table that presents both in the same
+weight is a table that hides which is which.
+
 | | Anomaly | Heatmap | Envelope | Cumulative |
 |---|---|---|---|---|
-| Fixes resolution | **yes, 2.9×** | not applicable | yes | yes |
-| Fixes occlusion | **no, measured** | yes, by construction | yes | partly, 3.5 swaps |
-| Years it supports | 2-5 | 10-81 | 1-2 over a band | 5-10 |
+| Fixes resolution | **yes, 2.9×** | not applicable | judgement: yes | judgement: yes |
+| Fixes occlusion | **no, measured identical** | yes, by construction | judgement: yes | **partly, 3.4 swaps** |
+| Years it supports | **2-5** | **10-80** | judgement: 1-2 over a band | not measured |
 | Variables it covers | all 13 | all 13 | all 13 | **2 of 13** |
 | Exact values readable | yes | no | yes | yes |
 | Keeps zoom, detail, opacity | yes | detail becomes moot | yes | detail becomes moot |
@@ -202,11 +258,11 @@ only.
 **Build the heatmap.** ← recommended
 
 The app's stated purpose is comparing years, and the measured reason it fails at
-that is ordering, not height: any two years change places on a quarter of all
-days, at every year count. The heatmap is the only one of the four that removes
-that problem rather than rescaling around it, the only one that shows all 81
-years at once, and the only one that makes a +0.43 °C shift across eighty years
-visible at all. It is also the most work, and that is the real cost of this
+that is ordering, not height: any two years change places on about a quarter of
+all days, at every year count and in every decade tested. The heatmap is the only
+one of the four that removes that problem rather than rescaling around it, the
+only one that shows all 80 years at once, and the only one on which a shift of
+at least +0.43 °C across those 80 years is visible at all. It is also the most work, and that is the real cost of this
 recommendation.
 
 **Then, or instead if the budget is small: the anomaly.** It is the cheapest
@@ -240,7 +296,7 @@ cumulative curves cross 3.5 times per pair after 1 April rather than rarely, and
 
 - **The colour scale**, if the heatmap is chosen. Diverging around a normal is
   the obvious choice and is not measured here.
-- **What happens to the year strip.** A heatmap of all 81 years does not need a
+- **What happens to the year strip.** A heatmap of all 80 years does not need a
   year selection at all, which touches a control that was just rebuilt.
 - **Whether the forms coexist** as a switch, or replace one another.
 - **Anything about the 1993 discontinuity beyond stating it.** No correction is
@@ -252,8 +308,10 @@ cumulative curves cross 3.5 times per pair after 1 April rather than rarely, and
 |---|---|
 | `EDA/stats/04-separation.csv` | separation and axis span, raw and anomaly, by year count |
 | `EDA/stats/04-axis-cost.csv` | what the app's fixed axis costs against a fitted one |
-| `EDA/stats/04-occlusion.csv` | roughness and the swap rate, raw and anomaly |
-| `EDA/stats/04-warming-signal.csv` | first-to-last difference, whole series and post-1993 |
+| `EDA/stats/04-occlusion.csv` | spread, roughness and the swap rate, raw and anomaly |
+| `EDA/stats/04-anchor-sweep.csv` | the same measures from six different end-years |
+| `EDA/stats/04-warming-signal.csv` | first-to-last difference, the gap it spans, and what the fitted trend alone implies |
+| `EDA/stats/02-break-test.csv` | document 2's joint trend-plus-step fit, quoted here and not refitted |
 | `EDA/stats/04-heatmap-cells.csv` | cell counts and cell size at a real plot size |
 | `EDA/stats/04-band-width.csv` | the 10-90 band's width |
 | `EDA/stats/04-envelope-escape.csv` | days a year spends outside the band |

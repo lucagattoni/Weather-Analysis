@@ -1,5 +1,5 @@
 variable,window,unit,complete_years,annual_min,annual_max,annual_spread,spread_at_1_july,crossings_per_pair_year,crossings_per_pair_after_1_apr
 rain,2016-2025,mm,10,661.600,1001.500,339.900,144.300,5.933,3.467
-rain,whole series,mm,80,555.100,1095.400,540.300,349.800,6.098,3.465
-sun,2016-2025,h,10,1318.500,1647.800,329.300,287.900,7.467,3.356
-sun,whole series,h,80,1239.500,1740.000,500.500,363.700,7.731,3.447
+rain,whole series,mm,80,555.100,1095.400,540.300,349.800,6.097,3.465
+sun,2016-2025,h,10,1318.500,1647.800,329.300,287.900,7.422,3.356
+sun,whole series,h,80,1239.500,1740.000,500.500,363.700,7.726,3.448

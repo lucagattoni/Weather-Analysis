@@ -1,3 +1,3 @@
-window,years_used,early_period,late_period,early_mean_c,late_mean_c,difference_c,pct_of_app_axis
-"whole series, first and last 30",80,1946-1975,1996-2025,9.425,9.857,0.432,0.961
-"post-1993 only, first and last 15",32,1994-2008,2011-2025,9.796,10.015,0.219,0.487
+window,years_used,early_period,late_period,early_mean_c,late_mean_c,difference_c,pct_of_app_axis,years_between_window_centres,trend_implied_c,measured_minus_trend_implied_c
+"whole series, first and last 30",80,1946-1975,1996-2025,9.425,9.857,0.432,0.961,50.000,0.726,-0.293
+"post-1993 only, first and last 15",32,1994-2008,2011-2025,9.796,10.015,0.219,0.487,17.000,0.247,-0.028
