@@ -1,4 +1,4 @@
-"""Measure how well four chart forms separate years, for `EDA/04-chart-forms.md`.
+"""Measure how well six chart forms separate years, for `EDA/04-chart-forms.md`.
 
 Run through the report entry point:
 

@@ -288,7 +288,7 @@ size worth drawing.
 
 A check on that column, since it was wrong before: the trend itself does not
 depend on cell size, so `trend_signal_c` in the CSV should be near-constant down
-the four rows, and it is - 0.433, 0.436, 0.433, 0.433. It read 0.704 at one cell
+the four rows, and it is - 0.434, 0.433, 0.436, 0.433. It read 0.704 at one cell
 per season until the cell that produced it was found to be a single day.
 
 The right column is a different question with a different answer: a single year's
@@ -304,7 +304,7 @@ The honest claim is therefore narrower than it looked: **a heatmap makes an
 unusual year findable across eighty years of record, but only just, at about 1.6
 times the noise of its own row; and it does not make the slow trend visible at
 all.** The slow trend is what document 2's fitted trends are for. Finer cells are
-still better for spotting a year than coarser ones, 1.59 against 1.14, but by a
+still better for spotting a year than coarser ones, 1.59 against 1.16, but by a
 much smaller margin than the uncorrected figure suggested.
 
 ![The same eighty years at two cell sizes](figures/04-heatmap-detail.png)
@@ -579,7 +579,7 @@ from document 2's hour-by-hour decomposition, not from that test.
 
 | File | Holds |
 |---|---|
-| `EDA/stats/04-separation.csv` | separation, spread and axis span, raw and anomaly, by year count |
+| `EDA/stats/04-separation.csv` | separation and axis span, raw and anomaly, by year count |
 | `EDA/stats/04-axis-cost.csv` | what the app's fixed axis costs against a fitted one |
 | `EDA/stats/04-occlusion.csv` | spread, roughness, pair counts and the swap rate, raw and anomaly |
 | `EDA/stats/04-anchor-sweep.csv` | the same measures from six windows across the record |
@@ -593,7 +593,7 @@ from document 2's hour-by-hour decomposition, not from that test.
 | `EDA/stats/04-band-width.csv` | the 10-90 band's width |
 | `EDA/stats/04-envelope-escape.csv` | days a year spends outside the band |
 | `EDA/stats/04-cumulative.csv` | annual totals, mid-year spread, crossing counts |
-| `EDA/figures/04-forms.png` | the same ten years in four of the forms |
+| `EDA/figures/04-forms.png` | four forms, each at the year count it is for |
 | `EDA/figures/04-separation.png` | separation as a share of the axis, by year count |
 | `EDA/figures/04-heatmap-detail.png` | eighty years of anomaly at two cell sizes |
 

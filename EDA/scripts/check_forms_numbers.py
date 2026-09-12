@@ -42,6 +42,7 @@ width, and nothing here would have noticed.
 Run it after any edit to the document or to `eda_forms.py`.
 """
 
+import re
 from pathlib import Path
 import pandas as pd
 
@@ -263,9 +264,16 @@ for step, nominal in (("1 day", 1), ("1 week", 7), ("1 month", 30), ("1 season",
     if hs.loc[step, "cells_per_year"] != 365 // nominal:
         fails.append(f"hs {step}: {hs.loc[step, 'cells_per_year']} cells, but 365//{nominal} "
                      f"= {365 // nominal}; a short final cell is back")
-says("trend signal is flat across cell sizes", "0.433, 0.436, 0.433, 0.433")
 trend_flat = hs["trend_signal_c"]
 under("trend signal spread across cell sizes", trend_flat.max() - trend_flat.min(), 0.01)
+# Built from the CSV, not typed out: a says() with a hand-written literal only
+# proves the document contains that string, and it passed for a full pass while
+# the string held the right four values in the wrong order.
+says("trend signal sequence, generated from the CSV",
+     ", ".join(f"{v:.3f}" for v in hs["trend_signal_c"]))
+says("daily against season row noise, generated from the CSV",
+     f'{hs.loc["1 day", "year_over_row_noise"]:.2f} against '
+     f'{hs.loc["1 season", "year_over_row_noise"]:.2f}')
 
 eq("axis cost ratio 2.9x",
    ax.iloc[2]["separation_pct_of_axis"] / ax.iloc[0]["separation_pct_of_axis"], 2.9, 0.05)
@@ -307,6 +315,15 @@ for y in sep.index:
        sep.loc[y, "anomaly_separation_c"], sep.loc[y, "raw_separation_c"], 0.0005)
     eq(f"anomaly swap rate identical n={y}",
        occ2.loc[y, "pct_days_pair_swaps_anomaly"], occ2.loc[y, "pct_days_pair_swaps_raw"], 0.0005)
+
+prov = DOC.split("## 6. Provenance", 1)[-1]
+listed = set(re.findall(r"`(EDA/(?:stats|figures)/[^`]+)`", prov))
+on_disk = ({str(f) for f in Path("EDA/stats").glob("04-*.csv")}
+           | {str(f) for f in Path("EDA/figures").glob("04-*.png")})
+checks += 1
+if on_disk - listed:
+    fails.append(f"provenance: generated but not listed in section 6: "
+                 f"{sorted(on_disk - listed)}")
 
 print(f"{checks} numeric claims checked against the CSVs")
 if fails:
