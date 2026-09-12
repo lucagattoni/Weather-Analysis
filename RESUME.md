@@ -1,95 +1,110 @@
 # RESUME: handover
 
-Updated 20260909 09:09 UTC. Read `CLAUDE.md` first, then this. Delete this file
-when the open decision below is settled and nothing is left in flight.
-
-> **The six commit subjects from `5753811` to `921d08e` carry wrong times.**
-> They were composed rather than read from the clock, and run one to three
-> hours ahead of the commits they label. The real times are 08:35 to 08:58
-> UTC on 20260909; `git log --pretty='%h %cI'` is the record to trust. The
-> history is public and deployed, so it was left as it stands rather than
-> force-pushed. Nothing else in the repo takes its dates from those strings.
+Updated 20260912 08:46 UTC. Read `CLAUDE.md` first, then this.
 
 ## Where things stand
 
-Nothing is in flight. `main` is clean, pushed, and deployed. There is no
-half-finished branch and no uncommitted work.
+Nothing is in flight. `main` is clean, pushed and deployed. There is no
+half-finished work, no stray worktree and no stray branch.
 
 - **Live:** <https://lucagattoni.github.io/Weather-Analysis/>, redeployed by
   `.github/workflows/pages.yml` on every push to `main`. Verified after the last
   deploy by fetching the site and comparing `sha256` of the served JS and CSS
-  against the local `dist/`: identical, and `index.html` carries the new markup.
-- **Built:** the POC, then zoom and pan, then multi-year comparison on a shared
-  Jan–Dec axis with the decade/shade/dash encoding, a detail slider from 1 h to
-  7 days, an opacity slider, and the year control described next.
-- **Analysis:** `EDA/` holds three documents with every figure and every number
-  behind them. It is linked from the README and from the app footer.
+  against the local `dist/`: identical.
+- **Built:** the POC, zoom and pan, multi-year comparison on a shared Jan-Dec
+  axis with the decade/shade/dash encoding, a detail slider from 1 h to 7 days,
+  an opacity slider, and the year strip described below.
+- **Analysed:** `EDA/` holds four documents. Three cover the series; the fourth
+  measures four candidate chart forms so the next one can be chosen.
 
-## The year control, rebuilt 20260909
+## The decision waiting for you
 
-The two-knob slider and the "chips only for years outside the range" model are
-gone. Both bugs reported against them came from the same place: a range plus a
-set of extras has two kinds of member, and a range cannot express "1990 to 2000
-without 1995", so the years it contributed were not removable.
+**Which chart to build next.** The evidence is on disk and finished:
+[`EDA/04-chart-forms.md`](EDA/04-chart-forms.md). It measures the four candidates
+against the real series, marks a recommendation, and states explicitly that no
+choice has been made.
 
-The selection is now a plain `Set<number>` and the strip is one tick per year,
-most recent on the left. Tap a tick to add or remove that year, drag across for
-a span, a chip removes one, `only <year>` leaves the most recent. The selection
-can never be empty, and the app opens on the current year. The chips are also
-the chart's legend, drawn with each year's real line and dash.
+The short version, with the detail and the caveats in the document:
 
-Full rationale, the alternatives weighed, and the gesture table:
-`plans/20260908_2230-multi-year-comparison-plan.md` **§13**.
+- Overlaid year lines fail on **ordering**, not on height. Any two years change
+  places on about a quarter of all days, at every year count from two to thirty.
+- Subtracting a day-of-year normal **cannot** change that, because it takes the
+  same number off every year on a given day. The document proves it rather than
+  asserting it: the swap rate is computed on raw values and on anomalies in one
+  table and the two columns are identical to three decimals.
+- So the recommendation is the **heatmap**, the only form that removes occlusion
+  by construction, with the **anomaly** as the cheap complement for two to five
+  years. It is a recommendation, not a decision.
+
+Three figures from the previous summary of this question did not survive
+re-measurement and are corrected in the document. Do not quote the old table
+that used to live in this file.
+
+When a form is chosen, the project convention is a plan in `plans/`, reviewed and
+approved, before any code.
 
 ## Read these before changing anything
 
 | File | Why |
 |---|---|
 | [`CLAUDE.md`](CLAUDE.md) | The rules. Short. |
-| [`plans/20260908_2031-weather-viewer-poc-plan.md`](plans/20260908_2031-weather-viewer-poc-plan.md) **§10** | Seven amendments to the POC plan. Sections 1–9 are as approved and some of their commands are stale. |
-| [`plans/20260908_2230-multi-year-comparison-plan.md`](plans/20260908_2230-multi-year-comparison-plan.md) **§8, §12, §13** | The decisions taken, the eight places the build differed, and the 20260909 revision of the year control. |
+| [`EDA/04-chart-forms.md`](EDA/04-chart-forms.md) | The open decision and every number behind it |
+| [`plans/20260908_2031-weather-viewer-poc-plan.md`](plans/20260908_2031-weather-viewer-poc-plan.md) **§10** | Seven amendments to the POC plan. Sections 1-9 are as approved and some of their commands are stale. |
+| [`plans/20260908_2230-multi-year-comparison-plan.md`](plans/20260908_2230-multi-year-comparison-plan.md) **§8, §12, §13** | The decisions taken, the eight places the build differed, and the 20260909 revision of the year control |
 | [`EDA/01-data-review.md`](EDA/01-data-review.md) **§10** | The data-quality register. Read before trusting any statistic crossing September 1993. |
 
-## The one open decision
+## The year control, rebuilt and reviewed 20260909
 
-The user asked which other chart form would best compare years. Four were
-measured against this data and the first recommended; **no choice has been made
-yet**, so do not start building one.
+The two-knob slider and the "chips only for years outside the range" model are
+gone. Both bugs reported against them came from one cause: a range plus a set of
+extras has two kinds of member, and a range cannot express "1990 to 2000 without
+1995", so the years it contributed were not removable.
 
-| Form | What it buys, measured |
-|---|---|
-| **Anomaly** (recommended) | Subtracting the day-of-year normal halves the axis, 45 °C to 22 °C, so the same between-year difference fills twice the plot height. Cheapest to build: a build-time normal plus a subtraction in the model. |
-| Heatmap, years down and day-of-year across | 80 × 365 cells at 3.5 × 7.5 px. No occlusion at all, and the only form that shows the +0.43 °C between the first and last 30 years, which is 1% of the current axis. |
-| Envelope, percentile band with years on top | The 10–90 band is 6.0 °C wide; 2025 spent 80 of 365 days outside it. |
-| Cumulative totals | Rain and sunshine only. Annual rainfall spans 555–1095 mm and the curves are 350 mm apart by 1 July, so they rarely cross. |
+The selection is now a plain `Set<number>`; the strip is one tick per year, most
+recent on the left. Tap a tick to add or remove, drag across for a span, a chip
+removes one, `only <year>` leaves the most recent. The selection can never be
+empty and the app opens on the current year. The chips are also the chart's
+legend, drawn with each year's real line and dash. Rationale and the alternatives
+weighed: `plans/20260908_2230-multi-year-comparison-plan.md` §13.
 
-If the user picks one, the project convention is a plan in `plans/` reviewed and
-approved before any code.
+**It has been adversarially reviewed.** Three reviewers found eleven real issues;
+all are fixed, verified in Chrome and deployed. The largest were a zoom window
+that came back inverted when it started on 29 February, a phone that could not
+scroll the page if the swipe began on the strip, a chip that lost its styling
+whenever exactly one year was selected, which is the state the app opens in, and
+a shift-arrow sweep that could grow but never shrink.
 
-## Not finished
+**The drag is not available on touch.** On a narrow screen the strip is wider
+than its track and a horizontal swipe scrolls it, which is how a finger reaches
+1946; the browser cancels the pointer when it takes the pan. Tapping adds and
+removes everywhere, and the hint under the strip is written from
+`(pointer: coarse)` so it only promises the gesture the device has.
 
-An adversarial review of the 20260909 year-control change was launched and the
-session ended before it reported. The change was merged on the user's explicit
-instruction and verified by hand in Chrome (dev server, production preview at
-the deploy sub-path, and the live site) with a clean console throughout, but no
-second pair of eyes has been over it. Worth one Sonnet pass before building on
-`src/app/controls.ts`.
+## Known wrong and deliberately left
+
+Six commit subjects, `5753811` to `921d08e`, carry timestamps that were composed
+rather than read from the clock, and run one to three hours ahead of the commits
+they label. The real times are 08:35 to 08:58 UTC on 20260909;
+`git log --pretty='%h %cI'` is the record to trust. The history is public and
+deployed, so it was not force-pushed. Nothing else takes its dates from those
+strings.
 
 ## Things that will bite
 
 - **A green CI run is not proof the site shipped.** See the deploy bullet in
   `CLAUDE.md`; a sub-path build served at the root returns 200 for everything.
   When fetching assets to check them, note that the paths inside `index.html`
-  already start with `/Weather-Analysis/` — appending one to a base URL that
-  ends the same way silently fetches the 404 page, at status 200.
+  already start with `/Weather-Analysis/` - appending one to a base URL that ends
+  the same way silently fetches the 404 page, at status 200.
 - **An unregistered ECharts component makes its option do nothing, silently.**
-  The chart title was configured correctly and simply never drew until
-  `TitleComponent` was added to `echarts.use`. There is no warning.
+  The chart title was configured correctly and never drew until `TitleComponent`
+  was added to `echarts.use`. There is no warning. `LegendComponent` and
+  `TitleComponent` are both deregistered now, because the chips are the legend
+  and the title is HTML.
 - **The zoom slider's data shadow is drawn by data index, not by time**, so a
   part-year series fills it to December. It is switched off for that reason.
 - **The app applies no correction for the September 1993 observation change**,
-  which moves eleven of thirteen variables. That is deliberate and stated in the
-  footer, but it means a line spanning 1993 crosses a discontinuity.
+  which moves eleven of thirteen variables. Deliberate, and stated in the footer.
 - **Sentinels are not missing data.** `clht` 999 is "no ceiling", `clamt` 9 is
   "sky obscured", `wddir` 0 is calm and not north. All three are excluded from a
   variable's range and from its aggregate, and drawn as gaps.
