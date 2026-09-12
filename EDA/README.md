@@ -1,8 +1,9 @@
 # EDA: Dublin Airport hourly weather, 1946-2026
 
 Exploratory analysis of the Met Éireann Dublin Airport hourly series that this
-repository visualises. Three documents, written to be read in order, plus the
-code and data that produce every number and figure in them.
+repository visualises. Three documents on the series itself, written to be read
+in order, plus one that measures chart forms against it, plus the code and data
+that produce every number and figure in all four.
 
 ## The documents
 
@@ -11,6 +12,7 @@ code and data that produce every number and figure in them.
 | 1 | **[Complete data review](01-data-review.md)** | What is in the file, and where it cannot be trusted |
 | 2 | **[Temperature](02-temperature.md)** | Long-term warming, by year, season and decade, and the extremes |
 | 3 | **[Precipitation](03-precipitation.md)** | The same questions asked of rainfall |
+| 4 | **[Which chart form to build next](04-chart-forms.md)** | Four candidate charts measured against the series, to settle an open decision |
 
 **Read document 1 first, or at least its
 [data-quality register](01-data-review.md#10-data-quality-register).** The station
@@ -30,6 +32,11 @@ of their conclusions reverse if it is ignored.
 - **Rainfall shows no detectable trend in anything.** Twelve measures tested,
   none significant, both the parametric and non-parametric tests agreeing on
   every one.
+- **Overlaid year lines fail on ordering, not on height.** Any two years change
+  places on about a quarter of all days, at every year count from two to thirty.
+  Subtracting a day-of-year normal is proven not to change that, to three
+  decimal places, because it takes the same number off every year. Document 4
+  measures the four candidate replacements on that basis.
 - **A September 1993 discontinuity in the daily minimum temperature reverses
   three answers** that a straightforward analysis gets backwards: daily minima
   appear not to warm, frost days appear to increase, and the diurnal
@@ -39,14 +46,16 @@ of their conclusions reverse if it is ignored.
 
 ```
 EDA/
-  01-data-review.md      the three documents
+  01-data-review.md      the three documents on the series
   02-temperature.md
   03-precipitation.md
+  04-chart-forms.md      the chart-form comparison
   figures/*.png          every chart, embedded by the documents
   stats/*.csv            every number the documents quote
   scripts/
     eda_common.py        loading, cleaning, the aggregation ladder, trend fitting
     eda_climate.py       the temperature and precipitation analyses
+    eda_forms.py         the chart-form comparison
     eda_report.py        entry point
     eda_report.py.lock   pinned dependencies
 ```
@@ -61,7 +70,8 @@ first. Run from the repository root:
 uv run EDA/scripts/eda_report.py --section all
 ```
 
-`--section` also takes `review`, `temperature` or `precipitation` individually,
+`--section` also takes `review`, `temperature`, `precipitation` or `forms`
+individually,
 and `--csv` points at a different source file. The default is the committed
 `data/dublin_airport-meteo-1946-2026-data.csv.gz`, which pandas decompresses by
 extension, so there is nothing to unpack first.

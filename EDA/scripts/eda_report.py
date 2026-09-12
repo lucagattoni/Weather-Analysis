@@ -11,6 +11,7 @@
 """Generate the figures and tables the EDA documents quote.
 
     uv run EDA/scripts/eda_report.py --section review
+    uv run EDA/scripts/eda_report.py --section forms
     uv run EDA/scripts/eda_report.py --section all
 
 Writes PNGs to `EDA/figures/` and CSVs to `EDA/stats/`. The markdown documents
@@ -32,6 +33,8 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from eda_forms import run_forms  # noqa: E402
 
 from eda_common import (  # noqa: E402
     BASELINE,
@@ -1057,7 +1060,7 @@ def main() -> int:
     parser.add_argument("--csv", type=Path, default=DEFAULT_CSV,
                         help="source hourly CSV; .gz is decompressed automatically")
     parser.add_argument("--section", default="review",
-                        choices=["review", "temperature", "precipitation", "all"])
+                        choices=["review", "temperature", "precipitation", "forms", "all"])
     args = parser.parse_args()
 
     if not args.csv.exists():
@@ -1072,6 +1075,8 @@ def main() -> int:
         run_temperature(args.csv)
     if args.section in ("precipitation", "all"):
         run_precipitation(args.csv)
+    if args.section in ("forms", "all"):
+        run_forms(args.csv)
     return 0
 
 

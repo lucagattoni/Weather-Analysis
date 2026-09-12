@@ -39,6 +39,6 @@ Browser app in TypeScript that visualises the Met Éireann Dublin Airport hourly
 
 ## Analysis (`EDA/`)
 
-- Exploratory analysis of the source series lives in `EDA/`, self-contained: `EDA/scripts/` generates `EDA/figures/` and `EDA/stats/`, which the numbered markdown documents embed. Regenerate with `uv run EDA/scripts/eda_report.py --section {review|temperature|precipitation|all}`; output must be deterministic.
+- Exploratory analysis of the source series lives in `EDA/`, self-contained: `EDA/scripts/` generates `EDA/figures/` and `EDA/stats/`, which the numbered markdown documents embed. Regenerate with `uv run EDA/scripts/eda_report.py --section {review|temperature|precipitation|forms|all}`; output must be deterministic.
 - Prose is written by hand, never generated; every number a document quotes must exist in an `EDA/stats/*.csv` so drift shows up as a git diff.
 - Read `EDA/01-data-review.md` §10 before trusting any statistic that crosses September 1993: the station changed observation practice there and it moves eleven of thirteen variables.
