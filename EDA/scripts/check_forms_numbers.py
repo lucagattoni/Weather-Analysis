@@ -27,9 +27,17 @@ review pass, which found three of them wrong at once - a "less than 0.2 points"
 that was 1.020 for sunshine, a "share of the area" that was 1/N rather than an
 area, and a spread that fell 32% and was written as 31%.
 
-Five adversarial review passes over this document have found numbers left stale
-by corrections applied in one place and not another, four separate times. That is
-the failure this exists to catch.
+Six adversarial review passes over this document have found numbers left stale by
+corrections applied in one place and not another, five separate times. That is the
+failure this exists to catch.
+
+What it cannot catch, stated so nobody reads a pass here as a clean bill: it reads
+CSVs and the markdown, never `src/`. Every claim the document makes about the app
+- that `VariableMeta` carries one range, that `axisFor` builds from two fields,
+that `AppState` has no mode, that `Series` has no band - is checked by hand or not
+at all. The same goes for the figures, whose axes it never looks at; the sixth
+pass found the lead figure had been drawing its heatmap panel into 3.5% of its
+width, and nothing here would have noticed.
 
 Run it after any edit to the document or to `eda_forms.py`.
 """
@@ -152,7 +160,13 @@ eq("band min", bw.iloc[0]["min_width_c"], 2.88)
 eq("band max", bw.iloc[0]["max_width_c"], 10.10)
 
 env = pd.read_csv(S / "04-envelope-escape.csv", index_col=0)
-for y, d, pct in ((2025, 96, 26.3), (2018, 93, 25.5), (2010, 119, 32.6), (1963, 101, 27.7)):
+doc_env = ((2025, 96, 26.3), (2018, 93, 25.5), (2010, 119, 32.6),
+           (1995, 102, 27.9), (1963, 101, 27.7))
+checks += 1
+if set(env.index) != {y for y, _, _ in doc_env}:
+    fails.append(f"envelope: CSV holds {sorted(env.index)}, the table prints "
+                 f"{sorted(y for y, _, _ in doc_env)}")
+for y, d, pct in (r for r in doc_env if r[0] in env.index):
     eq(f"envelope {y} days", env.loc[y, "days_outside_10_90"], d, 0.5)
     eq(f"envelope {y} pct", env.loc[y, "pct_outside"], pct, 0.05)
 
@@ -225,7 +239,33 @@ for k in ("temp", "rhum", "msl", "wdsp", "vis"):
     under(f"ties gap {k}", gap[k], 0.2)
 says("ties gap others in prose", "less than 0.2 points")
 
-res = pd.read_csv(S / "04-resolution.csv", index_col=0)
+# Ordinal claims. The prose ranks variables against each other and nothing
+# sorted anything, so "second lowest" was only ever true by inspection.
+order = var["pct_days_pair_swaps"].sort_values()
+checks += 1
+if list(order.index[:2]) != ["msl", "temp"]:
+    fails.append(f"swap order: doc says temp is second lowest after msl, CSV ranks {list(order.index[:2])}")
+says("temp second lowest in prose", "second *lowest*")
+says("msl named as the one below it", "only mean sea\nlevel pressure tangles less, at 18.4%")
+eq("msl swap rate", var.loc["msl", "pct_days_pair_swaps"], 18.4, 0.05)
+
+tied = var["pct_days_tied"].sort_values(ascending=False)
+checks += 1
+if list(tied.index[:2]) != ["rain", "sun"]:
+    fails.append(f"tied order: doc says sun is second after rain, CSV ranks {list(tied.index[:2])}")
+
+# Roughness sits below separation at every year count, not the two once quoted.
+for y in occ.index:
+    under(f"roughness under separation n={y}", occ.loc[y, "roughness_over_separation"], 1.0)
+
+eq("axis cost ratio 2.9x",
+   ax.iloc[2]["separation_pct_of_axis"] / ax.iloc[0]["separation_pct_of_axis"], 2.9, 0.05)
+says("2.9x in section 2", "2.9 times\nthe plot height")
+says("2.9x restated in the table", "**yes, 2.9\u00d7**")
+
+eq("points per pixel at 30 years", 365 / sm.loc[30, "panel_width_px"], 1.8, 0.05)
+says("points per pixel in prose", "1.8 points per pixel")
+
 daily, weekly = res.loc["1 day"], res.loc["1 week"]
 eq("spread fall daily to weekly",
    100 * (daily["cross_year_sd_c"] - weekly["cross_year_sd_c"]) / daily["cross_year_sd_c"], 32, 0.5)

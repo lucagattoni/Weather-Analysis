@@ -14,7 +14,13 @@ Every number below comes from a CSV in `EDA/stats/`. Regenerate all of it with:
 uv run EDA/scripts/eda_report.py --section forms
 ```
 
-![The same ten years drawn four ways](figures/04-forms.png)
+![Four forms, each at the year count it is for](figures/04-forms.png)
+
+The panels deliberately do not share a year count: ten years overlaid and as
+anomalies, the whole archive as a heatmap, and two years on a band. Each form is
+drawn at the count it is meant for, because drawing the heatmap at ten years or
+the envelope at eighty would show the form failing at a job nobody proposes for
+it.
 
 **Where the six come from.** Four were put to the user as the next chart. Two
 more, **small multiples** and **a sequential colour ramp above roughly 24 years**,
@@ -58,7 +64,7 @@ Separation is a range, a maximum minus a minimum, and every window here is a
 superset of the one before it, so it can only climb as years are added. That
 climb is arithmetic and not a finding, which is why spread sits beside it: a
 standard deviation across years has no such property. It rises from 1.51 °C at
-two years to 2.43 °C at twenty and then stops; at thirty it is 2.40 °C.
+two years, peaks at 2.43 °C at twenty, and eases back to 2.40 °C at thirty.
 
 **Resolution is a real problem.** The app's fixed axis spans 45 °C, so a ten-year
 selection's 7.22 °C of separation fills 16.0% of the plot height. An axis fitted
@@ -111,7 +117,8 @@ argument about which problem it solves.
 
 Every measurement above is at one point per day, and the app can resample to one
 per week. Judging the line chart only at daily would test it at a resolution its
-own README tells people not to use for a wide selection. From
+own README calls the fine end of the useful range for a wide selection, rather
+than one it warns against. From
 `EDA/stats/04-resolution.csv`, ten years:
 
 | Step | Points per year | Spread | Swap rate | Crossings per pair per year |
@@ -148,8 +155,9 @@ Nor does the variable. From `EDA/stats/04-variables.csv`, ten years, daily:
 | Sunshine duration | sum | 42.9% | 41.9% | 2.4% |
 
 Temperature, which everything else here is measured on, has the second *lowest*
-swap rate of the seven. Every other variable tangles at least as much, so
-choosing temperature flattered the line chart rather than the alternatives.
+swap rate of the seven. Five of the other six tangle more, and only mean sea
+level pressure tangles less, at 18.4%. So choosing temperature flattered the line
+chart against most of the alternatives, though not against all of them.
 
 Rain needs the two columns. On 18.5% of its day-pairs both years record exactly
 nothing, and "which is on top" is then undefined. Dropping those days and
@@ -329,6 +337,7 @@ From `EDA/stats/04-band-width.csv` and `EDA/stats/04-envelope-escape.csv`:
 | Days outside the band, 2025 | 96 of 365 (26.3%) |
 | Days outside the band, 2018 | 93 of 365 (25.5%) |
 | Days outside the band, 2010 | 119 of 365 (32.6%) |
+| Days outside the band, 1995 | 102 of 365 (27.9%) |
 | Days outside the band, 1963 | 101 of 365 (27.7%) |
 
 A typical year spends a quarter to a third of its days outside the band, so the
@@ -381,7 +390,7 @@ opinion the same weight hides which is which.
 | Fixes resolution | **yes, 2.9×** | *judgement: yes* | not applicable | no | not argued below | *judgement: yes* |
 | Fixes occlusion | **no, measured identical** | yes, by construction | yes, by construction | no | *judgement: yes, with 1-2 years drawn* | **partly, 3.4 swaps** |
 | Years it works at | *judgement: 2-5* | *judgement: 5-15, 30 for shape only* | *judgement: 30-80* | *judgement: 24+* | *judgement: 1-2 over a band* | not measured |
-| Variables covered | all 13 | all 13 | all 13 | all 13 | all 13 | **2 of 13** |
+| Variables covered | 12 of 13 | all 13 | 12 of 13 | all 13 | 12 of 13 | **2 of 13** |
 | Exact values readable | yes | *judgement: yes to about 15 years, shape only past that* | no | yes | yes | yes |
 | Needs a change to `ChartView` | no | yes, multi-grid | yes, a matrix | no | yes, a band series | no |
 | Keeps zoom, detail, opacity | all three | *judgement: all three* | *judgement: none of the three* | all three | *judgement: all three* | *judgement: zoom only; detail becomes moot* |
@@ -392,6 +401,16 @@ Build cost is the row to be most sceptical of: nothing here measures it. Two
 parts of the recommendation lean on it — taking the anomaly when the budget is
 smallest, and building small multiples before the heatmap — while the choice
 between those two is explicitly *not* made on cost. Section 4 says why.
+
+Wind direction is the thirteenth variable, and it is the one that makes three
+cells read "12 of 13". It is circular: `meta.json` types it `circular` and
+`src/data/types.ts` says why, since a mean of 350° and 10° is 0° and not 180°.
+Any form that subtracts a day-of-year normal or takes a percentile needs circular
+statistics for it, which nothing in this project implements and nothing here
+costs. That rules out the anomaly, the heatmap built on it, and the envelope's
+band until someone writes them. The forms that only redraw or recolour the raw
+series, small multiples and the sequential ramp, are untouched by this and really
+do cover all thirteen.
 
 The `ChartView` row is narrower than it looks. It asks only whether the adapter
 contract changes shape, which is why the anomaly and the cumulative form both

@@ -53,6 +53,8 @@ DEMO_YEARS = (2016, 2025)
 
 # A representative wide plot. Used only to turn a count of cells into a cell
 # size, so the heatmap's claim is about pixels and not about arithmetic.
+# Days per column in the four-way figure's monthly heatmap.
+BUCKET_DAYS = 30
 PLOT_WIDTH_PX = 1200
 PLOT_HEIGHT_PX = 520
 
@@ -393,12 +395,12 @@ def table_resolution(day: pd.DataFrame) -> pd.DataFrame:
     """Does the app's own detail slider already fix this?
 
     Every other measurement here is at one point per day. The app can resample
-    down to one point per week, and its README says daily to weekly is the
-    useful range for a wide selection, so measuring only at daily would judge
-    the line chart at a resolution its own documentation tells people not to use
-    for the case in question. If coarser steps drop the swap rate far enough,
-    the slider is already most of the answer and the argument for a new chart
-    form is correspondingly weaker.
+    down to one point per week, and its README calls daily to weekly the useful
+    range for a wide selection, so daily is the fine end of what it recommends
+    rather than something it warns against. Measuring only there still judges
+    the line chart at one end of its range. If coarser steps drop the swap rate
+    far enough, the slider is already most of the answer and the argument for a
+    new chart form is correspondingly weaker.
     """
     lo, hi = DEMO_YEARS[1] - 9, DEMO_YEARS[1]
     rows = []
@@ -793,13 +795,18 @@ def fig_forms(day: pd.DataFrame) -> None:
     first_complete = int(day.groupby("year")["mean"].count().pipe(
         lambda c: c.loc[c >= 350]).index.min())
     wide = work.loc[work["year"] >= first_complete].copy()
-    wide["bucket"] = (wide["doy"] - 1) // 30
+    wide["bucket"] = (wide["doy"] - 1) // BUCKET_DAYS
     wide = wide.pivot_table(index="year", columns="bucket", values="anomaly",
                             aggfunc="mean")
     limit = float(np.nanpercentile(np.abs(wide.to_numpy()), 99))
+    # The x extent is in days, not bucket indices. Every panel in this figure
+    # shares a day-of-year axis and the formatting loop below sets xlim to
+    # (1, 366) for all four; an extent of (0, n_buckets) put this panel's whole
+    # eighty years inside the first 3.5% of its width and left the rest blank.
     im = ax.imshow(wide.to_numpy(), aspect="auto", cmap="RdBu_r",
                    vmin=-limit, vmax=limit,
-                   extent=(0, wide.shape[1], float(wide.index.max()) + 0.5,
+                   extent=(1, 1 + BUCKET_DAYS * wide.shape[1],
+                           float(wide.index.max()) + 0.5,
                            float(wide.index.min()) - 0.5))
     ax.set_title("Heatmap of the monthly anomaly, "
                  f"{int(wide.index.min())}-{int(wide.index.max())}",
