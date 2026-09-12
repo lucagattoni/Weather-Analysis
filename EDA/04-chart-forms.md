@@ -40,7 +40,8 @@ Separation is a range, a maximum minus a minimum, and every window here is a
 superset of the one before it, so it can only climb as years are added. That
 climb is arithmetic and not a finding, which is why the spread column is there
 beside it: a standard deviation across years does not have that property. It
-rises from 1.51 °C at two years to 2.40 °C at twenty and then stops.
+rises from 1.51 °C at two years to 2.43 °C at twenty and then stops; at thirty
+it is 2.40 °C, slightly lower.
 
 **Resolution is a real problem.** The app's fixed axis spans 45 °C, so a ten-year
 selection's 7.22 °C of separation fills 16.0% of the plot height. An axis fitted
@@ -103,7 +104,7 @@ From `EDA/stats/04-separation.csv`:
 
 | Years | Separation | Raw axis needed | % of axis | Anomaly axis | % of axis |
 |---|---|---|---|---|---|
-| 2 | 2.14 °C | 23.06 °C | 9.3% | 14.44 °C | 14.8% |
+| 2 | 2.13 °C | 23.06 °C | 9.2% | 14.44 °C | 14.7% |
 | 3 | 3.79 °C | 23.06 °C | 16.4% | 14.44 °C | 26.2% |
 | 5 | 5.31 °C | 24.50 °C | 21.7% | 15.30 °C | 34.7% |
 | 10 | 7.22 °C | 24.67 °C | 29.3% | 15.64 °C | 46.2% |
@@ -175,9 +176,11 @@ cleaner measurement of the same thing. It is a shorter window, and comparing the
 two as though they measured the same quantity was the error.
 
 For the decision this only strengthens the case: **+0.43 °C is a floor.** The
-signal a heatmap would reveal is that or larger. One honest qualifier: the step
-is not significant on the annual mean by itself (p = 0.24), and document 2 makes
-its case from the hour-by-hour decomposition rather than from that test. A
+signal a heatmap would reveal is that or larger. One honest qualifier, and it is
+a real one: on the annual mean alone the step is not significant, p = 0.24, and
+its interval runs from -0.706 to +0.182, which does not even exclude a warming
+step. The sign is fixed by document 2's hour-by-hour decomposition, not by that
+test, and the floor argument rests entirely on that more powerful evidence. A
 heatmap will show the 1993 change as a horizontal seam, which is the honest
 outcome, and the app footer already names it.
 
@@ -236,20 +239,27 @@ only.
 
 ## 3. Side by side
 
-Cells in **bold** are measured and the CSV is named in section 2. The rest are
-judgement, and are marked so, because a table that presents both in the same
-weight is a table that hides which is which.
+Three kinds of cell, kept apart on purpose, because a table that gives a measured
+number and an opinion the same weight is a table that hides which is which.
+
+- **Bold** is measured, and the CSV behind it is named in section 2.
+- *Judgement* is my assessment, with nothing measured behind it.
+- Plain text is a structural fact about the form, true by what it is rather than
+  by what the data says. "A heatmap cannot show an exact value" needs no CSV.
 
 | | Anomaly | Heatmap | Envelope | Cumulative |
 |---|---|---|---|---|
-| Fixes resolution | **yes, 2.9×** | not applicable | judgement: yes | judgement: yes |
-| Fixes occlusion | **no, measured identical** | yes, by construction | judgement: yes | **partly, 3.4 swaps** |
-| Years it supports | **2-5** | **10-80** | judgement: 1-2 over a band | not measured |
+| Fixes resolution | **yes, 2.9×** | not applicable | *judgement: yes* | *judgement: yes* |
+| Fixes occlusion | **no, measured identical** | yes, by construction | *judgement: yes* | **partly, 3.4 swaps** |
+| Years it supports | **2-5** | **10-80** | *judgement: 1-2 over a band* | not measured |
 | Variables it covers | all 13 | all 13 | all 13 | **2 of 13** |
 | Exact values readable | yes | no | yes | yes |
 | Keeps zoom, detail, opacity | yes | detail becomes moot | yes | detail becomes moot |
-| Build cost | **lowest**: a normal plus a subtraction | highest: a new chart type | medium | medium |
+| Build cost | *judgement: lowest*, a normal plus a subtraction | *judgement: highest*, a new chart type | *judgement: medium* | *judgement: medium* |
 | Answers | how did these few years differ | which years were warm, and when | was this year unusual | how much so far |
+
+Build cost is the row to be most sceptical of. Nothing here measures it, and the
+recommendation leans on it.
 
 ---
 
@@ -287,7 +297,7 @@ An earlier session recommended the anomaly first, on the grounds that it halves
 the axis and is cheapest. Both halves of that are confirmed here. What was
 missing is that the axis was never the binding constraint. Two of that session's
 other figures did not survive re-measurement either, and are corrected above:
-cumulative curves cross 3.5 times per pair after 1 April rather than rarely, and
+cumulative curves cross 3.4 times per pair after 1 April rather than rarely, and
 2025 spends 96 days outside the 10-90 band rather than 80.
 
 ---

@@ -25,6 +25,7 @@ quotes both.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -59,15 +60,30 @@ PLOT_HEIGHT_PX = 520
 # rounded outward the way `src/model/scales.ts` rounds it.
 APP_TEMP_AXIS = (-15.0, 30.0)
 
-# From `EDA/stats/02-break-test.csv`, the joint trend-plus-step fit in document
-# 2: the trend once a step at 1993 is in the model, and the step itself. The
-# step is NEGATIVE, so it holds the whole-series difference down rather than
-# propping it up. It is not significant on the annual mean on its own
-# (p = 0.242); document 2 section 2.4 makes the case from the hour-by-hour
-# decomposition instead. Both numbers are quoted, not refitted, so this module
-# cannot drift from the document that owns them.
-DOC02_TREND_PER_DECADE = 0.14511
-DOC02_STEP_AT_1993_C = -0.262
+def doc02_joint_fit() -> tuple[float, float]:
+    """Document 2's joint trend-plus-step fit, read from its own table.
+
+    The trend once a step at 1993 is in the model, and the step itself. The step
+    is NEGATIVE, so it holds the whole-series difference down rather than
+    propping it up. It is not significant on the annual mean on its own
+    (p = 0.242); document 2 section 2.4 makes the case from the hour-by-hour
+    decomposition instead.
+
+    Read rather than copied. Two literals here would be right today and silently
+    stale the next time document 2 is regenerated against another year of data,
+    which is the same class of bug as hardcoding the number of years in the
+    archive. Missing or unparseable is an error, not a default.
+    """
+    table = pd.read_csv(STATS / "02-break-test.csv", index_col=0)
+    rows = [i for i in table.index if "Joint" in str(i)]
+    if not rows:
+        raise ValueError("02-break-test.csv has no joint trend-plus-step row")
+    row = table.loc[rows[0]]
+    trend = float(row["OLS slope (degC/decade)"])
+    match = re.search(r"step\s+(-?\d+\.\d+)\s*degC", str(row["verdict"]))
+    if not match:
+        raise ValueError(f"cannot read the 1993 step from: {row['verdict']!r}")
+    return trend, float(match.group(1))
 
 
 def _day_of_year(index: pd.DatetimeIndex) -> np.ndarray:
@@ -111,11 +127,11 @@ def _separation(matrix: pd.DataFrame) -> tuple[float, float]:
     return float(spread.median()), float(spread.mean())
 
 
-def _axis_span(values: np.ndarray, pad: float = 0.0) -> float:
+def _axis_span(values: np.ndarray) -> float:
     finite = values[np.isfinite(values)]
     if finite.size == 0:
         return float("nan")
-    return float(finite.max() - finite.min()) * (1.0 + pad)
+    return float(finite.max() - finite.min())
 
 
 def table_separation(day: pd.DataFrame) -> pd.DataFrame:
@@ -198,6 +214,7 @@ def table_warming(day: pd.DataFrame) -> pd.DataFrame:
     is not. The document quotes both and says which is which. If the two
     disagree badly, the whole-series number is measuring the instrument.
     """
+    trend_per_decade, _step = doc02_joint_fit()
     annual_mean = day.groupby("year")["mean"].mean()
     complete = day.groupby("year")["mean"].count() >= 350
     annual_mean = annual_mean.loc[complete]
@@ -228,9 +245,9 @@ def table_warming(day: pd.DataFrame) -> pd.DataFrame:
             "pct_of_app_axis": 100.0 * float(late.mean() - early.mean())
             / (APP_TEMP_AXIS[1] - APP_TEMP_AXIS[0]),
             "years_between_window_centres": gap_years,
-            "trend_implied_c": DOC02_TREND_PER_DECADE * gap_years / 10.0,
+            "trend_implied_c": trend_per_decade * gap_years / 10.0,
             "measured_minus_trend_implied_c": float(late.mean() - early.mean())
-            - DOC02_TREND_PER_DECADE * gap_years / 10.0,
+            - trend_per_decade * gap_years / 10.0,
         })
     return pd.DataFrame(rows).set_index("window")
 
@@ -351,11 +368,15 @@ def table_anchor_sweep(day: pd.DataFrame) -> pd.DataFrame:
 
 def table_heatmap_cells(day: pd.DataFrame) -> pd.DataFrame:
     """Cell size for a heatmap of years by day of year, at a real plot size."""
-    # 1946 to 2025 is 80 complete years, which is what the archive holds; 81
-    # would start the window in 1945 and there are no 1945 rows. The column
-    # count is 365 because the leap-day fold shares 28 and 29 February.
+    # Count the complete years rather than subtracting the first year from the
+    # last. The archive ends in a partial 2026, so `max - min` happens to give
+    # 80 today only because the missing "+1" cancels that partial year; append
+    # one more year of data and it would quietly be wrong again, which is the
+    # bug this line already had once. The column count is 365 because the
+    # leap-day fold shares 28 and 29 February.
     columns = int(day["doy"].max())
-    full = int(day["year"].max() - day["year"].min())
+    per_year = day.groupby("year")["mean"].count()
+    full = int((per_year >= 350).sum())
     rows = []
     for count in (10, 30, full):
         hi = DEMO_YEARS[1]
@@ -401,9 +422,8 @@ def table_envelope(day: pd.DataFrame) -> pd.DataFrame:
             "days_outside_10_90": int(outside),
             "pct_outside": 100.0 * outside / len(joined),
         })
-    out = pd.DataFrame(rows).set_index("year")
-    out.attrs["band_width_median_c"] = float(band["width"].median())
-    return out
+    # The band's own width is `table_band_width`; this table is only the escapes.
+    return pd.DataFrame(rows).set_index("year")
 
 
 def table_band_width(day: pd.DataFrame) -> pd.DataFrame:
