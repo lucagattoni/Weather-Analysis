@@ -172,10 +172,20 @@ def table_continuity(raw: pd.DataFrame) -> pd.DataFrame:
 
 
 def table_univariate(clean_df: pd.DataFrame) -> pd.DataFrame:
-    """Distribution summary per variable, sentinels already removed."""
+    """Distribution summary per variable, sentinels already removed.
+
+    Wind direction is circular, so its mean is the circular one and its
+    standard deviation and skew are left empty: both describe distance from a
+    mean along a line, and there is no line. The arithmetic mean of this column
+    reads 205.9 degrees against a circular mean of 235.6, and the gap reaches
+    60 degrees within a single month, so it is not a rounding question.
+    """
+    from eda_common import circular_mean_deg
+
     rows = []
     for v in VARIABLES:
         s = clean_df[v.key].dropna()
+        circular = v.aggregate == "circular"
         rows.append({
             "variable": v.key,
             "unit": v.unit,
@@ -184,12 +194,13 @@ def table_univariate(clean_df: pd.DataFrame) -> pd.DataFrame:
             "p5": s.quantile(0.05),
             "p25": s.quantile(0.25),
             "median": s.median(),
-            "mean": s.mean(),
+            "mean": (circular_mean_deg(s.to_numpy(dtype=float))
+                     if circular else s.mean()),
             "p75": s.quantile(0.75),
             "p95": s.quantile(0.95),
             "max": s.max(),
-            "std": s.std(),
-            "skew": s.skew(),
+            "std": np.nan if circular else s.std(),
+            "skew": np.nan if circular else s.skew(),
         })
     return pd.DataFrame(rows).set_index("variable")
 
@@ -534,8 +545,19 @@ def table_climatology(clean_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFram
             if v.aggregate == "circular":
                 cols[v.key] = g.apply(lambda s: circular_mean_deg(s.to_numpy(dtype=float)))
             elif v.aggregate == "sum" and totals:
-                # total per calendar month per year, then averaged over years
+                # total per calendar month per year, then averaged over years.
+                # The completeness gate is the point: the record ends on
+                # 2026-08-01 00:00, so August 2026 holds one hour of 744 and was
+                # being averaged in as a whole dry, sunless August alongside
+                # eighty real ones. Same idea as daily()'s min_hours and
+                # annual()'s min_days, which this path never had.
                 per_month = frame.groupby(["year", by])[v.key].sum(min_count=1)
+                hours = frame.groupby(["year", by])[v.key].count()
+                expected = pd.Series(
+                    [pd.Period(year=y, month=m, freq="M").days_in_month * 24
+                     for y, m in per_month.index],
+                    index=per_month.index)
+                per_month = per_month.loc[hours >= 0.9 * expected]
                 cols[v.key] = per_month.groupby(level=1).mean()
             else:
                 cols[v.key] = g.mean()
@@ -639,6 +661,11 @@ def fig_indicator_era(era: pd.DataFrame, blocks: pd.DataFrame) -> None:
         ax.axvline(break_year, color=INK_MUTED, linewidth=1.0, linestyle=(0, (4, 3)))
 
     ax = axes[0]
+    # Complete years only, as fig_rain_total_unaffected does below. Plotting the
+    # raw index put a 212-day 2026 on the end, and that year reverts to the
+    # documented codes partway through, so the final point fell to 69% directly
+    # under a title saying the undocumented value covers everything after 1993.
+    era = era.loc[:LAST_COMPLETE_YEAR]
     ax.fill_between(era.index, era["undocumented 111 %"], color=SERIES[0], alpha=0.85,
                     linewidth=0)
     ax.set_ylabel("% of hours")
@@ -801,7 +828,12 @@ def fig_zero_sun(raw: pd.DataFrame, spells: pd.DataFrame) -> None:
     for ax, series, ylabel, title in panels:
         frame = series.to_frame("v")
         frame["year"] = frame.index.year
-        frame["doy"] = frame.index.dayofyear
+        # Leap-adjusted: .dayofyear puts 10 March at 70 in a leap year and 69
+        # otherwise, so pooling "all years" by it mixes adjacent calendar days
+        # for every day past February. 29 February folds onto 28, as elsewhere.
+        doy = np.asarray(frame.index.dayofyear)
+        leap = np.asarray(frame.index.is_leap_year)
+        frame["doy"] = np.where(leap & (doy >= 60), doy - 1, doy)
         window = frame[(frame["doy"] >= lo) & (frame["doy"] <= hi)]
         stats_by_doy = window.groupby("doy")["v"].agg(
             p05=lambda s: s.quantile(0.05),

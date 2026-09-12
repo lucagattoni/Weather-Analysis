@@ -375,11 +375,20 @@ Sentinels removed. Hourly values, whole record.
 | `rhum` | % | 706,368 | 19 | 60 | 84 | 82.11 | 98 | 100 | 11.74 | -0.75 |
 | `msl` | hPa | 706,369 | 944.1 | 991.1 | 1014.8 | 1013.55 | 1031.7 | 1048.7 | 12.35 | -0.53 |
 | `wdsp` | knot | 706,369 | 0 | 2 | 9 | 10.11 | 20 | 46 | 5.67 | 0.70 |
-| `wddir` | ° | 693,896 | 10 | 50 | 230 | 205.9 | 320 | 360 | 84.50 | -0.51 |
+| `wddir` | ° | 693,896 | 10 | 50 | 230 | 235.6 | 320 | 360 | — | — |
 | `sun` | h | 706,369 | 0.0 | 0.0 | 0.0 | 0.168 | 1.0 | 1.0 | 0.33 | 1.75 |
 | `vis` | m | 706,114 | 5 | 4,000 | 25,000 | 25,688 | 50,000 | 75,000 | 15,177 | 0.64 |
 | `clht` | 100s ft | 518,928 | 0 | 5 | 35 | 56.87 | 200 | 440 | 60.89 | 1.73 |
 | `clamt` | okta | 706,344 | 0 | 1 | 7 | 5.58 | 8 | 8 | 2.54 | -0.90 |
+
+**`wddir` is the one row that is not a linear summary.** Its mean is the
+circular one, and its standard deviation and skew are left empty rather than
+filled with numbers that do not mean anything: both measure distance from a
+mean along a line, and a compass has no line. Until 20260912 this row carried
+the arithmetic mean, **205.9°**, which is not a direction the wind blows from
+here - it sat outside the 230 to 270 degree prevailing range named two
+paragraphs below, because averaging either side of north drags the answer
+toward south. The circular mean is **235.6°**, inside it.
 
 ![Hourly distributions](figures/01-distributions.png)
 
@@ -421,7 +430,7 @@ thermal lag.
 |---|---|---|---|---|
 | Month | December, 75.8 mm | April, 50.4 mm | May, 196.8 h | December, 54.1 h |
 
-Over the whole record the climatology totals 762 mm of rain and 1,466 hours of
+Over the whole record the climatology totals 763 mm of rain and 1,468 hours of
 sunshine a year.
 
 ### 7.1 Checking the file against Met Éireann's published normals
