@@ -45,45 +45,60 @@ session; it is a different shape of task from the review that produced the plan.
 
 ## The review loop is open, and honestly so
 
-`EDA/04-chart-forms.md` has now had **seven** adversarial passes. Findings: 8, 9,
-7, 6, 15, 8, 7. Passes 5 to 7 ran more than one reviewer with separate lenses, so
-those counts are not comparable to the single-lens passes before them; per lens
-the trend is 8, 9, 7, 6, 5, 4, 3.5.
+`EDA/04-chart-forms.md` has had **eight** adversarial passes. Findings: 8, 9, 7,
+6, 15, 8, 7, 9. Passes 5 to 8 ran two or three reviewers with separate lenses, so
+those counts are not comparable to the single-lens passes before them.
 
-**No pass has yet come back clean, so by the project's own rule the loop is not
-closed.** What has changed is where the findings live. Pass 7's prose reviewer
-checked every number, table and quotation and reported none wrong; its findings,
-and the other reviewer's, were all in the figures and in claims about `src/` -
-exactly the two things `EDA/scripts/check_forms_numbers.py` says it cannot reach.
+**No pass has come back clean.** Two things are now true at once and both matter
+to whoever runs the ninth.
 
-Each pass has found a category the one before it was not looking at. That is the
-reason to run an eighth rather than to declare victory:
+**The document's own defects are thinning.** Pass 7's prose reviewer checked every
+number, table and quotation and found none wrong; pass 8's found one pre-existing
+error. Prose-versus-CSV checking has reached its floor.
 
-| Pass | The category it opened up |
+**The fixing is now a large source of the findings.** Four of pass 8's five
+prose-side findings were damage from passes 6 and 7 - including a sentence that
+mistranscribed the very CSV column it was written to vindicate, and a commit
+message claiming a fix that had only half landed. That part of the loop does not
+converge by running more passes, because each pass seeds the next one's findings.
+What breaks it is mechanising the check, which is where the effort has gone.
+
+Each pass has also opened a category its predecessors were not looking at, which
+is the argument for a ninth:
+
+| Pass | The category it opened |
 |---|---|
-| 5 | Build cost had never been audited beyond small multiples |
+| 5 | Build cost, never audited beyond small multiples |
 | 5 | Numbers the prose *derives* from cells, which the checker never saw |
 | 6 | **The figures.** Four passes cited the lead figure; none had opened it |
 | 7 | Bucketing: a cell labelled "one season" was one day long |
+| 8 | **The measurement itself**: a number that matched its CSV exactly and was computed wrongly |
 
-### What pass 7 changed, because it moved measured numbers
+### What pass 8 changed, because it moved a headline number
 
-A cell index was `(doy - 1) // step` with no clamp, so every step that does not
-divide 365 left a short final cell: five days at a month, and **a single day** at
-a week and at a season. Four call sites had it. The fix, `bucket_index` in
-`eda_forms.py`, folds those days into the last full cell.
+`table_heatmap_signal` asks whether one year stands out as a row, and the document
+calls its denominator "the noise of its own row". The code divided by the standard
+deviation of the **whole heatmap**. Those differ by exactly the quantity being
+detected: variance splits as pooled^2 = within^2 + between^2, and the between-year
+term is the signal, so the signal sat in its own denominator.
 
-It moved things. Trend-over-cell-noise at one cell per season went 0.42 to 0.53;
-cells per year went 53/13/5 to 52/12/4; the resolution table moved throughout.
-**The recommendation did not move**: the headline 1.59 is measured at one cell per
-day, which had no short cell, and the conclusion that the eighty-year trend is
-not visible as colour survives at 0.53, still far below 1. One sentence did not
-survive - "aggregating helps a little and then stops" was true only of the broken
-numbers.
+The bias grows as cells coarsen, because within-row noise falls while the
+between-year term does not:
 
-The check that the fix is right: the eighty-year trend cannot depend on cell
-size, so `trend_signal_c` should be flat down the four rows. It now reads 0.433,
-0.436, 0.433, 0.433. It read 0.704 at one cell per season before.
+| Cell | was | is | understated |
+|---|---|---|---|
+| 1 day | 1.587 | 1.616 | 1.8% |
+| 1 week | 1.379 | 1.430 | 3.7% |
+| 1 month | 1.308 | 1.439 | 10.0% |
+| 1 season | 1.158 | 1.420 | 22.6% |
+
+**The recommendation does not move** - the headline goes 1.59 to 1.62. One claim
+did not survive: "finer cells are still better for spotting a year" was an
+artefact of the wrong term. Corrected, the column is nearly flat, so cell size is
+close to free on that axis.
+
+This is the one seven passes could not have found. It matched its CSV perfectly;
+the CSV was wrong. Only reading the generator as a statistician reaches it.
 
 ## Before editing the document or `eda_forms.py`, run
 
@@ -91,8 +106,8 @@ size, so `trend_signal_c` should be flat down the four rows. It now reads 0.433,
 uv run EDA/scripts/check_forms_numbers.py
 ```
 
-262 claims, and it exits non-zero if the prose and the CSVs have drifted apart.
-It exists because six passes found numbers left stale by corrections applied in
+272 claims, and it exits non-zero if the prose and the CSVs have drifted apart.
+It exists because seven passes found numbers left stale by corrections applied in
 one place and not another, five separate times.
 
 **What it cannot reach, and this matters:** it reads CSVs and the markdown, never
