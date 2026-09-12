@@ -43,6 +43,20 @@ deliberately "change the contract, change nothing a user can see", because nobod
 has costed this work and step 1 is what will tell us. Start it in a fresh
 session; it is a different shape of task from the review that produced the plan.
 
+The exact next command, from the repo root:
+
+```
+NAME=$(date -u "+%Y%m%d_%H%M")-small-multiples
+git fetch && git pull --ff-only
+git worktree add "../Weather-Analysis.worktrees/$NAME" -b "$NAME"
+```
+
+Then, in that worktree: reshape `ChartView` in `src/chart/adapter.ts` to
+`{x, panels[], lineOpacity}`, follow it through `src/chart/echarts.ts` and the
+single construction site at `src/main.ts:111`, and finish with `npm run build`
+clean and the overlay verified unchanged in Chrome. No user-visible change in
+step 1 is the point of step 1.
+
 ## The review loop is open, and honestly so
 
 `EDA/04-chart-forms.md` has had **eight** adversarial passes. Findings: 8, 9, 7,
