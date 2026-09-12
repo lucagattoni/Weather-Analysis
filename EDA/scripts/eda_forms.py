@@ -320,6 +320,12 @@ def table_occlusion(day: pd.DataFrame) -> pd.DataFrame:
                                      .std(axis=0, ddof=1).median()),
             "roughness_c": roughness,
             "roughness_over_separation": roughness / sep if sep else float("nan"),
+            # A flat rate per PAIR is not a flat amount of tangle: the number
+            # of pairs on screen grows as N(N-1)/2, so the crossings a reader
+            # has to disentangle grow with it even though the rate does not.
+            "pairs_on_screen": count * (count - 1) // 2,
+            "expected_crossings_per_point": (count * (count - 1) // 2)
+            * _swap_rate(matrix) / 100.0,
             "pct_days_pair_swaps_raw": _swap_rate(matrix),
             # Subtracting a day-of-year normal takes the same number off every
             # year on a given day, so it cannot change which year is above
@@ -364,6 +370,191 @@ def table_anchor_sweep(day: pd.DataFrame) -> pd.DataFrame:
             "pct_days_pair_swaps": _swap_rate(matrix),
         })
     return pd.DataFrame(rows).set_index("window")
+
+
+def table_resolution(day: pd.DataFrame) -> pd.DataFrame:
+    """Does the app's own detail slider already fix this?
+
+    Every other measurement here is at one point per day. The app can resample
+    down to one point per week, and its README says daily to weekly is the
+    useful range for a wide selection, so measuring only at daily would judge
+    the line chart at a resolution its own documentation tells people not to use
+    for the case in question. If coarser steps drop the swap rate far enough,
+    the slider is already most of the answer and the argument for a new chart
+    form is correspondingly weaker.
+    """
+    lo, hi = DEMO_YEARS[1] - 9, DEMO_YEARS[1]
+    rows = []
+    for label, step in (("1 day", 1), ("2 days", 2), ("4 days", 4),
+                        ("1 week", 7), ("4 weeks", 28)):
+        work = day.loc[(day["year"] >= lo) & (day["year"] <= hi)].copy()
+        work["bucket"] = (work["doy"] - 1) // step
+        matrix = work.pivot_table(index="year", columns="bucket", values="mean",
+                                  aggfunc="mean")
+        sep, _ = _separation(matrix)
+        rate = _swap_rate(matrix)
+        points = int(matrix.shape[1])
+        rows.append({
+            "step": label,
+            "points_per_year": points,
+            "separation_c": sep,
+            "cross_year_sd_c": float(matrix.std(axis=0, ddof=1).median()),
+            "pct_points_pair_swaps": rate,
+            # The rate and the count point opposite ways, and both are real: a
+            # coarser line swaps on a larger share of its points but has far
+            # fewer points, so there is less tangle on screen in absolute terms.
+            "crossings_per_pair_per_year": rate / 100.0 * points,
+        })
+    return pd.DataFrame(rows).set_index("step")
+
+
+def table_variables(clean_df: pd.DataFrame) -> pd.DataFrame:
+    """Is the swap rate a fact about temperature, or about the series?
+
+    The recommendation generalises to an app with thirteen variables, so it
+    should not rest on one of them. Rain and sunshine are summed rather than
+    averaged and a great many of their days are exactly equal at zero, which
+    makes "which year is on top" ill-defined; they are reported anyway, with
+    the share of tied points, so the reader can see why they behave differently.
+    """
+    lo, hi = DEMO_YEARS[1] - 9, DEMO_YEARS[1]
+    rows = []
+    for key in ("temp", "rhum", "msl", "wdsp", "vis", "rain", "sun"):
+        var_day = daily(clean_df, key)
+        var_day = var_day.loc[var_day["mean"].notna()].copy()
+        if var_day.empty:
+            continue
+        var_day["doy"] = _day_of_year(var_day.index)
+        matrix = _matrix(var_day, lo, hi, "mean")
+        if matrix.empty or len(matrix.index) < 2:
+            continue
+        ties = []
+        years = list(matrix.index)
+        for i, a in enumerate(years):
+            for b in years[i + 1:]:
+                diff = (matrix.loc[a] - matrix.loc[b]).to_numpy()
+                diff = diff[np.isfinite(diff)]
+                if diff.size:
+                    ties.append(float((diff == 0).mean()))
+        rows.append({
+            "variable": key,
+            "aggregate": "sum" if key in ("rain", "sun") else "mean",
+            "separation": _separation(matrix)[0],
+            "cross_year_sd": float(matrix.std(axis=0, ddof=1).median()),
+            "pct_days_pair_swaps": _swap_rate(matrix),
+            "pct_days_tied": 100.0 * float(np.mean(ties)) if ties else float("nan"),
+        })
+    return pd.DataFrame(rows).set_index("variable")
+
+
+def table_heatmap_signal(day: pd.DataFrame) -> pd.DataFrame:
+    """Can a heatmap actually show the long-run shift, and at what cell size?
+
+    The heatmap is recommended partly because a +0.43 C shift across eighty
+    years is invisible on a line chart. That is only an argument for it if the
+    shift is visible in the colour, and colour has to compete with the noise in
+    the cells: a day's anomaly swings several degrees, so at one cell per day a
+    0.43 C difference is a small fraction of the range the scale must cover.
+    Aggregating the cells cuts the noise without touching the signal.
+
+    The ratio below is the first-to-last-thirty-years difference over the
+    standard deviation of the cell values. Below about 1 it is hopeless, and a
+    reader sees speckle; well above it the shift reads as a change in colour.
+    """
+    normals = (
+        day.loc[(day["year"] >= NORMALS[0]) & (day["year"] <= NORMALS[1])]
+        .groupby("doy")["mean"]
+        .mean()
+    )
+    work = day.assign(anomaly=day["mean"] - day["doy"].map(normals))
+    complete = work.groupby("year")["mean"].count()
+    complete = complete.loc[complete >= 350].index
+    work = work.loc[work["year"].isin(complete)]
+
+    rows = []
+    for label, step in (("1 day", 1), ("1 week", 7), ("1 month", 30),
+                        ("1 season", 91)):
+        buckets = work.copy()
+        buckets["bucket"] = (buckets["doy"] - 1) // step
+        matrix = buckets.pivot_table(index="year", columns="bucket",
+                                     values="anomaly", aggfunc="mean")
+        early = matrix.loc[matrix.index[:30]].to_numpy()
+        late = matrix.loc[matrix.index[-30:]].to_numpy()
+        signal = float(np.nanmean(late) - np.nanmean(early))
+        noise = float(np.nanstd(matrix.to_numpy()))
+        # A single cell is not the only thing a reader sees. The eye averages
+        # along a row, and a row of N cells has noise smaller by root N, so an
+        # unusual year can be legible as a row even where the slow trend across
+        # rows is not. These two questions have different answers and the
+        # document has to give both.
+        year_means = np.nanmean(matrix.to_numpy(), axis=1)
+        row_noise = noise / np.sqrt(matrix.shape[1])
+        rows.append({
+            "cell": label,
+            "cells_per_year": int(matrix.shape[1]),
+            "trend_signal_c": signal,
+            "cell_noise_sd_c": noise,
+            "trend_over_cell_noise": signal / noise if noise else float("nan"),
+            "year_to_year_sd_c": float(np.nanstd(year_means)),
+            "row_noise_sd_c": float(row_noise),
+            "year_over_row_noise": float(np.nanstd(year_means) / row_noise),
+        })
+    return pd.DataFrame(rows).set_index("cell")
+
+
+def fig_heatmap_detail(day: pd.DataFrame) -> None:
+    """The same eighty years of anomaly at one cell per day and one per month."""
+    normals = (
+        day.loc[(day["year"] >= NORMALS[0]) & (day["year"] <= NORMALS[1])]
+        .groupby("doy")["mean"]
+        .mean()
+    )
+    work = day.assign(anomaly=day["mean"] - day["doy"].map(normals))
+    complete = work.groupby("year")["mean"].count()
+    complete = complete.loc[complete >= 350].index
+    work = work.loc[work["year"].isin(complete)]
+
+    fig, axes = plt.subplots(1, 2, figsize=(12.4, 4.6))
+    for ax, (label, step) in zip(axes, (("one cell per day", 1),
+                                        ("one cell per month", 30))):
+        buckets = work.copy()
+        buckets["bucket"] = (buckets["doy"] - 1) // step
+        matrix = buckets.pivot_table(index="year", columns="bucket",
+                                     values="anomaly", aggfunc="mean")
+        limit = float(np.nanpercentile(np.abs(matrix.to_numpy()), 99))
+        im = ax.imshow(matrix.to_numpy(), aspect="auto", cmap="RdBu_r",
+                       vmin=-limit, vmax=limit,
+                       extent=(0, matrix.shape[1],
+                               float(matrix.index.max()) + 0.5,
+                               float(matrix.index.min()) - 0.5))
+        ax.set_title(f"{label} ({matrix.shape[1]} per year)", color=INK, fontsize=10)
+        ax.set_ylabel("year", color=INK_SECONDARY)
+        ax.set_xticks([])
+        fig.colorbar(im, ax=ax, fraction=0.03, pad=0.02, label="°C from normal")
+    fig.tight_layout()
+    save_fig(fig, FIGURES / "04-heatmap-detail.png")
+
+
+def table_small_multiples(day: pd.DataFrame) -> pd.DataFrame:
+    """One small panel per year, which the roadmap already named.
+
+    It removes occlusion exactly as the heatmap does, because no two years share
+    a panel, and it reuses the line chart rather than needing a new one. What it
+    spends instead is panel area, and comparing two years becomes a matter of
+    looking from one panel to another rather than at one line against another.
+    """
+    rows = []
+    for count in (4, 10, 30, 80):
+        cols = int(np.ceil(np.sqrt(count)))
+        panel_rows = int(np.ceil(count / cols))
+        rows.append({
+            "years": count,
+            "grid": f"{cols} x {panel_rows}",
+            "panel_width_px": PLOT_WIDTH_PX / cols,
+            "panel_height_px": PLOT_HEIGHT_PX / panel_rows,
+            "panel_area_share_pct": 100.0 / count,
+        })
+    return pd.DataFrame(rows).set_index("years")
 
 
 def table_heatmap_cells(day: pd.DataFrame) -> pd.DataFrame:
@@ -544,13 +735,28 @@ def fig_forms(day: pd.DataFrame) -> None:
     ax.set_ylabel("°C from normal", color=INK_SECONDARY)
 
     ax = axes[1][0]
-    wide = _matrix(work, hi - 29, hi, "mean")
+    # Anomaly, not raw, and the whole archive rather than the last thirty years.
+    # On raw values an auto-scaled diverging map spends its whole range on the
+    # seasonal cycle, so the panel shows summer and winter and says nothing
+    # about the difference between years, which is the only thing the heatmap is
+    # being recommended for. The scale is symmetric so that zero is the middle
+    # colour and a warm year and a cold one are equally far from it.
+    first_complete = int(day.groupby("year")["mean"].count().pipe(
+        lambda c: c.loc[c >= 350]).index.min())
+    wide = work.loc[work["year"] >= first_complete].copy()
+    wide["bucket"] = (wide["doy"] - 1) // 30
+    wide = wide.pivot_table(index="year", columns="bucket", values="anomaly",
+                            aggfunc="mean")
+    limit = float(np.nanpercentile(np.abs(wide.to_numpy()), 99))
     im = ax.imshow(wide.to_numpy(), aspect="auto", cmap="RdBu_r",
-                   extent=(1, 366, float(wide.index.max()) + 0.5, float(wide.index.min()) - 0.5))
-    ax.set_title(f"Heatmap, {int(wide.index.min())}-{int(wide.index.max())}",
+                   vmin=-limit, vmax=limit,
+                   extent=(0, wide.shape[1], float(wide.index.max()) + 0.5,
+                           float(wide.index.min()) - 0.5))
+    ax.set_title("Heatmap of the monthly anomaly, "
+                 f"{int(wide.index.min())}-{int(wide.index.max())}",
                  color=INK, fontsize=10)
     ax.set_ylabel("year", color=INK_SECONDARY)
-    fig.colorbar(im, ax=ax, fraction=0.03, pad=0.02, label="°C")
+    fig.colorbar(im, ax=ax, fraction=0.03, pad=0.02, label="°C from normal")
 
     ax = axes[1][1]
     ref = day.loc[(day["year"] >= NORMALS[0]) & (day["year"] <= NORMALS[1])]
@@ -605,6 +811,12 @@ def run_forms(csv_path: Path) -> None:
     save_table(table_warming(day), STATS / "04-warming-signal.csv", float_format="%.3f")
     save_table(table_occlusion(day), STATS / "04-occlusion.csv", float_format="%.3f")
     save_table(table_anchor_sweep(day), STATS / "04-anchor-sweep.csv", float_format="%.3f")
+    save_table(table_resolution(day), STATS / "04-resolution.csv", float_format="%.3f")
+    save_table(table_variables(clean_df), STATS / "04-variables.csv", float_format="%.3f")
+    save_table(table_small_multiples(day), STATS / "04-small-multiples.csv",
+               float_format="%.3f")
+    save_table(table_heatmap_signal(day), STATS / "04-heatmap-signal.csv",
+               float_format="%.3f")
     save_table(table_heatmap_cells(day), STATS / "04-heatmap-cells.csv", float_format="%.3f")
     save_table(table_band_width(day), STATS / "04-band-width.csv", float_format="%.3f")
     save_table(table_envelope(day), STATS / "04-envelope-escape.csv", float_format="%.3f")
@@ -612,3 +824,4 @@ def run_forms(csv_path: Path) -> None:
 
     fig_forms(day)
     fig_separation(sep)
+    fig_heatmap_detail(day)

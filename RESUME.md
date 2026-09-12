@@ -26,19 +26,21 @@ choice has been made.
 
 The short version, with the detail and the caveats in the document:
 
-- Overlaid year lines fail on **ordering**, not on height. Any two years change
-  places on about a quarter of all days, at every year count from two to thirty.
+- Overlaid year lines fail on **ordering**, and it is the number of pairs that
+  grows rather than the rate: a quarter of days swap at every year count, but
+  pairs grow as N(N-1)/2, so expected crossings run from 0.3 a day at two years
+  to 111 at thirty.
 - Subtracting a day-of-year normal **cannot** change that, because it takes the
   same number off every year on a given day. The document proves it rather than
   asserting it: the swap rate is computed on raw values and on anomalies in one
-  table and the two columns are identical to three decimals.
-- So the recommendation is the **heatmap**, the only form that removes occlusion
-  by construction, with the **anomaly** as the cheap complement for two to five
-  years. It is a recommendation, not a decision.
+  table and the columns are identical to three decimals.
+- The recommendation is **small multiples**, the cheaper of the two forms that
+  remove occlusion outright, with the **heatmap** second and uniquely able to
+  carry all eighty years. It is a recommendation, not a decision.
 
-Three figures from the previous summary of this question did not survive
-re-measurement and are corrected in the document. Do not quote the old table
-that used to live in this file.
+Several figures did not survive re-measurement, including two the analysis itself
+had asserted before measuring them. The document records each correction. Do not
+quote the old four-form table that used to live in this file.
 
 When a form is chosen, the project convention is a plan in `plans/`, reviewed and
 approved, before any code.

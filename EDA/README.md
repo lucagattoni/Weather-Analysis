@@ -12,7 +12,7 @@ that produce every number and figure in all four.
 | 1 | **[Complete data review](01-data-review.md)** | What is in the file, and where it cannot be trusted |
 | 2 | **[Temperature](02-temperature.md)** | Long-term warming, by year, season and decade, and the extremes |
 | 3 | **[Precipitation](03-precipitation.md)** | The same questions asked of rainfall |
-| 4 | **[Which chart form to build next](04-chart-forms.md)** | Four candidate charts measured against the series, to settle an open decision |
+| 4 | **[Which chart form to build next](04-chart-forms.md)** | Six candidate charts measured against the series, to settle an open decision |
 
 **Read document 1 first, or at least its
 [data-quality register](01-data-review.md#10-data-quality-register).** The station
@@ -32,11 +32,14 @@ of their conclusions reverse if it is ignored.
 - **Rainfall shows no detectable trend in anything.** Twelve measures tested,
   none significant, both the parametric and non-parametric tests agreeing on
   every one.
-- **Overlaid year lines fail on ordering, not on height.** Any two years change
-  places on about a quarter of all days, at every year count from two to thirty.
-  Subtracting a day-of-year normal is proven not to change that, to three
-  decimal places, because it takes the same number off every year. Document 4
-  measures the four candidate replacements on that basis.
+- **Overlaid year lines fail on ordering, and it is the pair count that grows,
+  not the rate.** Any two years change places on about a quarter of all days at
+  every year count from two to thirty, but the pairs on screen grow as N(N-1)/2,
+  so expected crossings go from 0.3 a day at two years to 111 at thirty.
+  Subtracting a day-of-year normal is proven not to change that, to three decimal
+  places, because it takes the same number off every year. Document 4 measures
+  six candidate replacements on that basis, and finds that temperature has the
+  second lowest swap rate of seven variables, so it flattered the line chart.
 - **A September 1993 discontinuity in the daily minimum temperature reverses
   three answers** that a straightforward analysis gets backwards: daily minima
   appear not to warm, frost days appear to increase, and the diurnal
