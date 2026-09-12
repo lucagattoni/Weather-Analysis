@@ -20,9 +20,11 @@ half-finished work, no stray worktree and no stray branch.
 ## The decision waiting for you
 
 **Which chart to build next.** The evidence is on disk and finished:
-[`EDA/04-chart-forms.md`](EDA/04-chart-forms.md). It measures the four candidates
+[`EDA/04-chart-forms.md`](EDA/04-chart-forms.md). It measures six candidates
 against the real series, marks a recommendation, and states explicitly that no
-choice has been made.
+choice has been made. Four were the ones originally put to you; small multiples
+and a sequential ramp were already on record in the multi-year plan and are
+measured alongside them.
 
 The short version, with the detail and the caveats in the document:
 
