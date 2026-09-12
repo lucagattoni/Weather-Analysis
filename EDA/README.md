@@ -60,6 +60,7 @@ EDA/
     eda_climate.py       the temperature and precipitation analyses
     eda_forms.py         the chart-form comparison
     eda_report.py        entry point
+    check_forms_numbers.py  fails if document 4 and its CSVs disagree
     eda_report.py.lock   pinned dependencies
 ```
 
@@ -96,6 +97,17 @@ diff, so prose and data cannot disagree silently.
 
 Every document names the command that regenerates its inputs and links the CSV
 behind each table.
+
+For document 4 that link is also enforced rather than trusted:
+
+```
+uv run EDA/scripts/check_forms_numbers.py
+```
+
+exits non-zero and names the pair if any number the prose quotes has drifted from
+the CSV it came from. It was written after three separate rounds of review found
+numbers left stale by corrections that had been applied in one place and not
+another.
 
 ## Method
 

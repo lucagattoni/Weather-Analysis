@@ -1,6 +1,6 @@
 # RESUME: handover
 
-Updated 20260912 08:46 UTC. Read `CLAUDE.md` first, then this.
+Updated 20260912 18:44 UTC. Read `CLAUDE.md` first, then this.
 
 ## Where things stand
 
@@ -48,6 +48,29 @@ quote the old four-form table that used to live in this file.
 
 When a form is chosen, the project convention is a plan in `plans/`, reviewed and
 approved, before any code.
+
+## Where the review of that analysis got to
+
+Four adversarial passes have run over `EDA/04-chart-forms.md`, finding 8, 9, 7
+and 6 issues. All are fixed and committed. Three of them were claims the analysis
+had asserted without measuring, and measuring them changed the recommendation
+twice, so the passes were earning their keep rather than polishing.
+
+**A fifth pass has not run.** The project rule is to loop until a pass finds
+nothing, and no pass has yet come back clean. Each one has found less than the
+last and the remaining findings were smaller, but the loop is not closed. That is
+the one thing on this analysis that is unfinished, and it is a deliberate stop,
+not an oversight.
+
+Before editing the document or `EDA/scripts/eda_forms.py`, run:
+
+```
+uv run EDA/scripts/check_forms_numbers.py
+```
+
+It fails if any number the prose quotes has drifted from its CSV. It exists
+because three separate rounds of review found numbers left stale by corrections
+applied in one place and not another.
 
 ## Read these before changing anything
 
