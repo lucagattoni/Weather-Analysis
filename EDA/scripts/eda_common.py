@@ -313,13 +313,24 @@ def daily(df: pd.DataFrame, key: str, how: str | None = None,
     return out
 
 
-def annual(day: pd.DataFrame, how: str, min_days: int = 350) -> pd.DataFrame:
+def annual(day: pd.DataFrame, how: str, min_days: int = 350,
+           column: str = "mean") -> pd.DataFrame:
     """One row per calendar year, from the daily frame.
 
     `min_days` drops a year assembled from too few days, which is what makes
     2026 disappear from every trend without a special case anywhere else.
+
+    `column` picks which daily column to aggregate. It exists so a series
+    built from daily maxima or minima goes through the same completeness gate
+    as the mean: those two were grouped by hand and skipped it, which no
+    published number depended on only because no year in the record is short.
     """
-    g = day.groupby("year")["mean"]
+    if how == "circular":
+        # daily() handles circular; this does not, and a plain mean of
+        # degrees puts the average of 350 and 10 at 180 rather than 0.
+        raise ValueError("annual() cannot aggregate a circular variable; "
+                         "use circular_mean_deg per group")
+    g = day.groupby("year")[column]
     total = g.sum(min_count=1) if how == "sum" else g.mean()
     out = pd.DataFrame({"value": total, "days": g.count()})
     out.loc[out["days"] < min_days, "value"] = np.nan
@@ -328,6 +339,9 @@ def annual(day: pd.DataFrame, how: str, min_days: int = 350) -> pd.DataFrame:
 
 def seasonal(day: pd.DataFrame, how: str, min_days: int = 85) -> pd.DataFrame:
     """One row per season per year, indexed (season, season_year)."""
+    if how == "circular":
+        raise ValueError("seasonal() cannot aggregate a circular variable; "
+                         "use circular_mean_deg per group")
     g = day.groupby(["season", "season_year"])["mean"]
     total = g.sum(min_count=1) if how == "sum" else g.mean()
     out = pd.DataFrame({"value": total, "days": g.count()})

@@ -310,10 +310,12 @@ def decade_table(series: pd.Series, unit: str, how: str = "mean") -> pd.DataFram
 def temperature_frames(cleaned: pd.DataFrame) -> dict[str, pd.DataFrame | pd.Series]:
     day = daily(cleaned, "temp")
     ann = annual(day, how="mean")["value"]
-    ann_max = day.groupby("year")["max"].mean()
-    ann_min = day.groupby("year")["min"].mean()
-    for s in (ann_max, ann_min):
-        s.loc[s.index > LAST_COMPLETE_YEAR] = np.nan
+    # Through annual(), not a bare groupby: the maxima and minima series get
+    # the same min_days gate as the mean. The hand-rolled versions dropped
+    # only years past LAST_COMPLETE_YEAR, so a thin year inside the record
+    # would have been averaged into a trend the mean series had excluded.
+    ann_max = annual(day, how="mean", column="max")["value"]
+    ann_min = annual(day, how="mean", column="min")["value"]
     return {"day": day, "annual": ann, "annual_max": ann_max, "annual_min": ann_min}
 
 
@@ -330,7 +332,7 @@ def table_temperature_trends(frames: dict) -> pd.DataFrame:
                           _trend_of(frames["annual_max"]), "degC"))
     rows.append(trend_row("Annual mean of daily minima",
                           _trend_of(frames["annual_min"]), "degC"))
-    dtr = (day.groupby("year")["max"].mean() - day.groupby("year")["min"].mean())
+    dtr = frames["annual_max"] - frames["annual_min"]
     rows.append(trend_row("Diurnal temperature range", _trend_of(dtr), "degC"))
     return pd.DataFrame(rows).set_index("series")
 
@@ -349,7 +351,12 @@ def table_temperature_thresholds(day: pd.DataFrame) -> pd.DataFrame:
     of the true one. The bias is in one direction and roughly constant, so
     trends in these counts survive it better than their absolute values do.
     """
-    g = day.loc[day["year"] <= LAST_COMPLETE_YEAR].groupby("year")
+    # Same completeness gate as every other annual series: a year assembled
+    # from too few days would undercount every threshold below.
+    per_year = day.groupby("year")["mean"].count()
+    keep = per_year.loc[per_year >= 350].index
+    g = day.loc[(day["year"] <= LAST_COMPLETE_YEAR)
+               & day["year"].isin(keep)].groupby("year")
     out = pd.DataFrame({
         "frost days (Tmin < 0)": g["min"].apply(lambda s: (s < 0).sum()),
         "ice days (Tmax < 0)": g["max"].apply(lambda s: (s < 0).sum()),

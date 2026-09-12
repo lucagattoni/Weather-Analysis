@@ -115,9 +115,16 @@ against the variability.**
 ![Rainfall trend by season](figures/03-seasonal-trends.png)
 
 Applying the joint trend-plus-step model from the temperature document to the
-annual total gives a step of +70.7 mm at September 1993 with p = 0.151. **Not
-significant**, so unlike temperature the naive whole-record slope needs no
-correction here.
+annual total gives a step of **+86.7 mm** at September 1993, on an interval from
+-12.6 to +186.1 mm, with **p = 0.086**. **Not significant**, so unlike
+temperature the naive whole-record slope needs no correction here. The interval
+spans zero, which is the same statement made a second way.
+
+These figures were quoted as +70.7 mm and p = 0.151 until 20260912. Commit
+`dd882ee` on 20260909 fixed a real defect - step p-values were never
+autocorrelation-corrected while being filed under a column that said they were -
+and regenerated `EDA/stats/03-break-test.csv`, but did not revisit this
+paragraph. The verdict never changed, since both p-values are above 0.05.
 
 ![Does the 1993 break drive the rainfall trend?](figures/03-break-test.png)
 
