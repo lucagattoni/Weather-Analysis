@@ -114,6 +114,51 @@ close to free on that axis.
 This is the one seven passes could not have found. It matched its CSV perfectly;
 the CSV was wrong. Only reading the generator as a statistician reaches it.
 
+## Documents 01 to 03 were audited on 20260912, and they had defects
+
+The same statistical lens that found the row-noise bug in the chart-forms module
+was pointed at `eda_common.py`, `eda_climate.py` and `eda_report.py` - 2,383 lines
+that generate documents 01 to 03 and had never been read this way. It found five
+real errors, four of them in published numbers.
+
+**The load-bearing result held.** The -0.262 degC step at September 1993 and its
+interval survive, reproduced three independent ways including a from-scratch
+re-derivation. `EDA/04-chart-forms.md` quotes that number, so it mattered.
+
+| What was published | What it should have been |
+|---|---|
+| Mean wind direction **205.9 deg** (arithmetic) | **235.6 deg** (circular) |
+| Precipitation step **+70.7 mm, p = 0.151** | **+86.7 mm, p = 0.086** |
+| August rain **73.9 mm**, sun **155.8 h** | **74.9 mm**, **157.8 h** |
+| Annual climatology **762 mm, 1,466 h** | **763 mm, 1,468 h** |
+
+The wind-direction one is the clearest: averaging 350 and 10 degrees the way you
+average temperatures gives 180. The published mean sat *outside* the prevailing
+range named two paragraphs below it in the same document, and the corrected one
+sits inside.
+
+A figure also contradicted its own captions. `01-indicator-era.png` plotted an
+unbounded year index, so a 212-day 2026 became its last point, and because that
+year reverts to the documented indicator codes partway through, the fill dropped
+to 69% directly beneath a title saying it "covers everything after" 1993.
+
+Two latent defects were fixed that move no number today: annual maxima and minima
+skipped the completeness gate their sibling applies, and `annual()`/`seasonal()`
+would have taken a plain mean of a circular variable. Both now behave; the second
+raises rather than guessing.
+
+### The gap that let a three-day-old stale number survive
+
+`check_forms_numbers.py` guards `EDA/04-chart-forms.md` and **nothing guards 01,
+02 or 03.** The precipitation step was corrected in its CSV on 20260909 by commit
+`dd882ee` and left wrong in the prose until 20260912, through an adversarial
+review of that very commit. The project convention - every quoted number exists
+in a CSV so drift shows in a git diff - makes drift visible and does not make it
+fail. It failed to be noticed for three days.
+
+Extending the checker to documents 01 to 03 is the obvious next piece of work on
+the analysis side, and it is not done.
+
 ## Before editing the document or `eda_forms.py`, run
 
 ```
