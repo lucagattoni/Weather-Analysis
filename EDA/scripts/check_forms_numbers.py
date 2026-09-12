@@ -185,9 +185,9 @@ eq("mean crossings after 1 Apr", cu["crossings_per_pair_after_1_apr"].mean(), 3.
 
 
 res = pd.read_csv(S / "04-resolution.csv", index_col=0)
-for step, pts, sd, rate, cr in (("1 day", 365, 2.36, 25.8, 94.3), ("2 days", 183, 2.10, 32.4, 59.3),
-                                ("4 days", 92, 1.81, 38.9, 35.8), ("1 week", 53, 1.62, 39.7, 21.0),
-                                ("4 weeks (beyond the slider)", 14, 0.99, 39.8, 5.6)):
+for step, pts, sd, rate, cr in (("1 day", 365, 2.36, 25.8, 94.3), ("2 days", 182, 2.10, 32.6, 59.3),
+                                ("4 days", 91, 1.78, 39.1, 35.6), ("1 week", 52, 1.61, 40.2, 20.9),
+                                ("4 weeks (beyond the slider)", 13, 0.97, 39.3, 5.1)):
     r = res.loc[step]
     eq(f"res {step} points", r["points_per_year"], pts, 0.5)
     eq(f"res {step} spread", r["cross_year_sd_c"], sd)
@@ -211,12 +211,12 @@ for y, w, h, share in ((4, 600, 260, 25.0), (10, 300, 173, 8.3), (30, 200, 104, 
     eq(f"sm {y} share", sm.loc[y, "panel_area_share_pct"], share, 0.0501)
 
 hs = pd.read_csv(S / "04-heatmap-signal.csv", index_col=0)
-for cell, cells, trend, row in (("1 day", 365, 0.17, 1.59), ("1 week", 53, 0.25, 1.40),
-                                ("1 month", 13, 0.34, 1.24), ("1 season", 5, 0.42, 1.14)):
+for cell, cells, trend, row in (("1 day", 365, 0.17, 1.59), ("1 week", 52, 0.24, 1.38),
+                                ("1 month", 12, 0.39, 1.31), ("1 season", 4, 0.53, 1.16)):
     eq(f"hs {cell} cells", hs.loc[cell, "cells_per_year"], cells, 0.5)
     eq(f"hs {cell} trend/noise", hs.loc[cell, "trend_over_cell_noise"], trend, 0.00501)
     eq(f"hs {cell} year/rownoise", hs.loc[cell, "year_over_row_noise"], row, 0.005)
-for cell, eff in (("1 day", 70), ("1 week", 28), ("1 month", 10), ("1 season", 5)):
+for cell, eff in (("1 day", 70), ("1 week", 27), ("1 month", 10), ("1 season", 4)):
     eq(f"hs {cell} effective cells", hs.loc[cell, "effective_cells_per_row"], eff, 0.5)
 
 occ2 = pd.read_csv(S / "04-occlusion.csv", index_col=0)
@@ -257,6 +257,15 @@ if list(tied.index[:2]) != ["rain", "sun"]:
 # Roughness sits below separation at every year count, not the two once quoted.
 for y in occ.index:
     under(f"roughness under separation n={y}", occ.loc[y, "roughness_over_separation"], 1.0)
+
+for step, nominal in (("1 day", 1), ("1 week", 7), ("1 month", 30), ("1 season", 91)):
+    checks += 1
+    if hs.loc[step, "cells_per_year"] != 365 // nominal:
+        fails.append(f"hs {step}: {hs.loc[step, 'cells_per_year']} cells, but 365//{nominal} "
+                     f"= {365 // nominal}; a short final cell is back")
+says("trend signal is flat across cell sizes", "0.433, 0.436, 0.433, 0.433")
+trend_flat = hs["trend_signal_c"]
+under("trend signal spread across cell sizes", trend_flat.max() - trend_flat.min(), 0.01)
 
 eq("axis cost ratio 2.9x",
    ax.iloc[2]["separation_pct_of_axis"] / ax.iloc[0]["separation_pct_of_axis"], 2.9, 0.05)

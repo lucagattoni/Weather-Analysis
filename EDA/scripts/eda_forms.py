@@ -7,8 +7,9 @@ Run through the report entry point:
 The app draws overlaid lines on a fixed y-scale. That works for two or three
 years and stops working well before twenty, because the between-year difference
 is small next to a single year's own swing. Four forms were proposed as the next
-chart; this module measures each against the real series so the choice is made
-on numbers rather than on which one sounds best.
+chart and two more were already deferred in the multi-year plan; this module
+measures all six against the real series so the choice is made on numbers rather
+than on which one sounds best.
 
 The governing measure is **separation**: the median vertical distance between
 the highest and lowest selected year, as a fraction of the axis the form needs.
@@ -55,6 +56,20 @@ DEMO_YEARS = (2016, 2025)
 # size, so the heatmap's claim is about pixels and not about arithmetic.
 # Days per column in the four-way figure's monthly heatmap.
 BUCKET_DAYS = 30
+
+
+def bucket_index(doy: pd.Series, step: int) -> pd.Series:
+    """Day of year to cell index, with the short final cell merged backwards.
+
+    `(doy - 1) // step` leaves a remainder cell wherever step does not divide
+    365: five days at a month, and a single day at a week and at a season. A
+    one-day cell labelled "one season" is not a season. It is averaged over
+    ninety times fewer days than the cells beside it, so it is far noisier, and
+    it was carrying real weight: it doubled the season row's cell noise and
+    moved trend-over-cell-noise from 0.53 to 0.42 at that step. Clamping the
+    index folds those days into the last full cell instead.
+    """
+    return np.minimum((doy - 1) // step, 365 // step - 1)
 PLOT_WIDTH_PX = 1200
 PLOT_HEIGHT_PX = 520
 
@@ -411,7 +426,7 @@ def table_resolution(day: pd.DataFrame) -> pd.DataFrame:
     for label, step in (("1 day", 1), ("2 days", 2), ("4 days", 4),
                         ("1 week", 7), ("4 weeks (beyond the slider)", 28)):
         work = day.loc[(day["year"] >= lo) & (day["year"] <= hi)].copy()
-        work["bucket"] = (work["doy"] - 1) // step
+        work["bucket"] = bucket_index(work["doy"], step)
         matrix = work.pivot_table(index="year", columns="bucket", values="mean",
                                   aggfunc="mean")
         sep, _ = _separation(matrix)
@@ -499,7 +514,7 @@ def table_heatmap_signal(day: pd.DataFrame) -> pd.DataFrame:
     for label, step in (("1 day", 1), ("1 week", 7), ("1 month", 30),
                         ("1 season", 91)):
         buckets = work.copy()
-        buckets["bucket"] = (buckets["doy"] - 1) // step
+        buckets["bucket"] = bucket_index(buckets["doy"], step)
         matrix = buckets.pivot_table(index="year", columns="bucket",
                                      values="anomaly", aggfunc="mean")
         early = matrix.loc[matrix.index[:30]].to_numpy()
@@ -561,7 +576,7 @@ def fig_heatmap_detail(day: pd.DataFrame) -> None:
     for ax, (label, step) in zip(axes, (("one cell per day", 1),
                                         ("one cell per month", 30))):
         buckets = work.copy()
-        buckets["bucket"] = (buckets["doy"] - 1) // step
+        buckets["bucket"] = bucket_index(buckets["doy"], step)
         matrix = buckets.pivot_table(index="year", columns="bucket",
                                      values="anomaly", aggfunc="mean")
         limit = float(np.nanpercentile(np.abs(matrix.to_numpy()), 99))
@@ -792,10 +807,14 @@ def fig_forms(day: pd.DataFrame) -> None:
     # about the difference between years, which is the only thing the heatmap is
     # being recommended for. The scale is symmetric so that zero is the middle
     # colour and a warm year and a cold one are equally far from it.
-    first_complete = int(day.groupby("year")["mean"].count().pipe(
-        lambda c: c.loc[c >= 350]).index.min())
-    wide = work.loc[work["year"] >= first_complete].copy()
-    wide["bucket"] = (wide["doy"] - 1) // BUCKET_DAYS
+    # Complete years only, at BOTH ends. Bounding just the start let the partial
+    # 2026 in as an eighty-first row built from as little as one day per cell,
+    # and titled the panel 1946-2026 while 04-heatmap-cells.csv called the same
+    # window 1946-2025.
+    complete = work.groupby("year")["mean"].count()
+    complete = complete.loc[complete >= 350].index
+    wide = work.loc[work["year"].isin(complete)].copy()
+    wide["bucket"] = bucket_index(wide["doy"], BUCKET_DAYS)
     wide = wide.pivot_table(index="year", columns="bucket", values="anomaly",
                             aggfunc="mean")
     limit = float(np.nanpercentile(np.abs(wide.to_numpy()), 99))

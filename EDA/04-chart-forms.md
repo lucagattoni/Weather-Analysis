@@ -4,9 +4,16 @@ This document exists to settle one open question: **what should the next chart i
 the app be?** Six candidates are measured here against the real series, so the
 choice rests on numbers rather than on which one sounds best.
 
-**No choice has been made.** The recommendation in section 4 is a recommendation.
-The decision is the user's, and the project convention is that a plan in `plans/`
-is written and approved before any of this is built.
+**The choice was made on 20260912.** Put the question section 4.1 says flips the
+recommendation - is the app for a handful of chosen years, or for surveying the
+whole record? - the answer was **both**. Section 4.1 says those are not exclusive
+and puts the cheaper to abandon first, so: small multiples now, the heatmap after.
+The plan is `plans/20260912_2049-small-multiples-plan.md`, approved the same day.
+
+Nothing below has been rewritten to suit that outcome. Section 4 still reads as
+the recommendation it was, section 4.1 still says the question is the reader's
+rather than the data's, and the forms not chosen keep the cases made for them.
+The evidence has to stand on its own or it is not evidence.
 
 Every number below comes from a CSV in `EDA/stats/`. Regenerate all of it with:
 
@@ -124,10 +131,10 @@ than one it warns against. From
 | Step | Points per year | Spread | Swap rate | Crossings per pair per year |
 |---|---|---|---|---|
 | 1 day | 365 | 2.36 °C | 25.8% | 94.3 |
-| 2 days | 183 | 2.10 °C | 32.4% | 59.3 |
-| 4 days | 92 | 1.81 °C | 38.9% | 35.8 |
-| 1 week | 53 | 1.62 °C | 39.7% | 21.0 |
-| 4 weeks, past what the slider offers | 14 | 0.99 °C | 39.8% | 5.6 |
+| 2 days | 182 | 2.10 °C | 32.6% | 59.3 |
+| 4 days | 91 | 1.78 °C | 39.1% | 35.6 |
+| 1 week | 52 | 1.61 °C | 40.2% | 20.9 |
+| 4 weeks, past what the slider offers | 13 | 0.97 °C | 39.3% | 5.1 |
 
 The rate and the count point opposite ways, and both are true. Coarser steps make
 each remaining point *more* likely to swap, because averaging pulls the years
@@ -267,14 +274,22 @@ to compete with the noise in the cells, and the shift loses:
 | Cell | Cells per year | Effective cells per row | Trend ÷ cell noise | One year ÷ row noise |
 |---|---|---|---|---|
 | 1 day | 365 | 70 | 0.17 | 1.59 |
-| 1 week | 53 | 28 | 0.25 | 1.40 |
-| 1 month | 13 | 10 | 0.34 | 1.24 |
-| 1 season | 5 | 5 | 0.42 | 1.14 |
+| 1 week | 52 | 27 | 0.24 | 1.38 |
+| 1 month | 12 | 10 | 0.39 | 1.31 |
+| 1 season | 4 | 4 | 0.53 | 1.16 |
 
 The left column is the eighty-year shift against the spread of cell values: 0.17
-to 0.42, never close to 1, so the trend is not visible as colour at any cell size
-tested. Aggregating helps a little and then stops, because coarser cells lose
-resolution as fast as they gain signal.
+at one cell per day, rising to 0.53 at one per season. Aggregating helps, and
+unlike an earlier version of this table it keeps helping all the way to the
+coarsest cell tested. It still never gets close to 1. Four cells a year is
+already too coarse to be a chart of the year at all, and even there the shift is
+only half the noise of a cell, so the trend is not visible as colour at any cell
+size worth drawing.
+
+A check on that column, since it was wrong before: the trend itself does not
+depend on cell size, so `trend_signal_c` in the CSV should be near-constant down
+the four rows, and it is - 0.433, 0.436, 0.433, 0.433. It read 0.704 at one cell
+per season until the cell that produced it was found to be a single day.
 
 The right column is a different question with a different answer: a single year's
 deviation against the noise of its own row, which the eye averages along. The
@@ -314,7 +329,13 @@ Already endorsed for this purpose in
 `plans/20260908_2230-multi-year-comparison-plan.md` §4 above roughly 24 years.
 
 **Buys:** the cheapest change on this list, smaller even than the anomaly: it
-touches `src/model/style.ts` and nothing else. It does not need the lines to be
+touches `src/model/style.ts` and nothing else, *provided the ramp stays a
+function of the absolute year*. `src/app/controls.ts` calls `styleForYear`
+directly at two places to colour the strip ticks and the chips, and a ramp
+stretched across the current selection instead would have to reach those too,
+besides breaking the project's own rule that colour follows the entity and never
+its rank. The multi-year plan §4 can be read either way and this document does
+not settle it. It does not need the lines to be
 individually followable, which is exactly the property the measurements above say
 is unavailable, so it is the only candidate that accepts the tangle instead of
 fighting it.
@@ -489,13 +510,18 @@ rest of this document implies, and the anomaly alone may be enough.
 ### Two recommendations were overturned by measurement, including mine
 
 An earlier session recommended the anomaly, on the grounds that it halves the
-axis and is cheapest. Both are confirmed. What was missing is that the axis was
-never the binding constraint.
+axis and is cheapest. Neither survives as stated. The axis shrinks by more than
+half against the one the app actually draws, 2.9× at ten years, and by less than
+half against a fitted one, 1.4× to 1.6× across the six year counts; "halves" is
+not a number from either column. And "cheapest" was withdrawn in section 2 once
+the code was read: the narrower axis has to come from somewhere, and nothing in
+`meta.json` or `AppState` can supply it today. What was missing from that
+recommendation is larger than either: the axis was never the binding constraint.
 
 An earlier draft of **this** document then recommended the heatmap, partly
 because it was "the only form on which a +0.43 °C shift across eighty years is
 visible at all". Measuring that claim rather than asserting it showed the shift
-is 0.17 to 0.42 times the cell noise and is not visible at any cell size. The
+is 0.17 to 0.53 times the cell noise and is not visible at any cell size. The
 heatmap keeps a real and different advantage, finding an unusual year across the
 whole record, though at 1.59 times the row noise rather than the 3.6 an
 uncorrected count of cells suggested.
